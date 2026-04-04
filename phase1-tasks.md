@@ -11,7 +11,7 @@ Each section is self-contained: paste the **Session Prompt** directly into a new
 |---|-------|--------|--------|
 | 1 | Workspace foundation | ✅ Done | `5fb139e` |
 | 2 | API Gateway + ingest | ✅ Done | `f8bd5e3` |
-| 3 | Event pipeline + persistence | 🔄 In Progress | — |
+| 3 | Event pipeline + persistence | ✅ Done | `27c843d` |
 | 4 | Control API | ⬜ Pending | — |
 | 5 | Web MVP dashboard | ⬜ Pending | — |
 | 6 | Quality + ops baseline | ⬜ Pending | — |
