@@ -1,5 +1,4 @@
 import { pgEnum, pgTable, text, timestamp, integer, real, index } from 'drizzle-orm/pg-core';
-import { tenants } from './tenants.js';
 import { traces } from './traces.js';
 import { traceSteps } from './trace-steps.js';
 
@@ -20,9 +19,7 @@ export const modelCalls = pgTable(
     stepId: text('step_id')
       .notNull()
       .references(() => traceSteps.id),
-    tenantId: text('tenant_id')
-      .notNull()
-      .references(() => tenants.id),
+    tenantId: text('tenant_id').notNull(),
     modelProvider: modelProviderEnum('model_provider').notNull(),
     modelName: text('model_name').notNull(),
     inputTokens: integer('input_tokens').notNull(),

@@ -33,7 +33,6 @@ services:
     environment:
       DATABASE_URL: postgresql://optima:${POSTGRES_PASSWORD:-changeme}@postgres:5432/agentoptima
       DATABASE_SSL: disable
-      TENANT_ID: ${TENANT_ID:-default}
       NODE_ENV: production
       LOG_LEVEL: ${LOG_LEVEL:-info}
     depends_on:
@@ -50,7 +49,6 @@ services:
       DATABASE_URL: postgresql://optima:${POSTGRES_PASSWORD:-changeme}@postgres:5432/agentoptima
       DATABASE_SSL: disable
       JWT_SECRET: ${JWT_SECRET}
-      TENANT_ID: ${TENANT_ID:-default}
       NODE_ENV: production
       LOG_LEVEL: ${LOG_LEVEL:-info}
       PORT: 3000
@@ -70,7 +68,6 @@ services:
       DATABASE_URL: postgresql://optima:${POSTGRES_PASSWORD:-changeme}@postgres:5432/agentoptima
       DATABASE_SSL: disable
       JWT_SECRET: ${JWT_SECRET}
-      TENANT_ID: ${TENANT_ID:-default}
       CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:5173}
       NODE_ENV: production
       LOG_LEVEL: ${LOG_LEVEL:-info}

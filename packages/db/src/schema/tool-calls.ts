@@ -1,5 +1,4 @@
 import { pgTable, text, timestamp, integer, boolean, index } from 'drizzle-orm/pg-core';
-import { tenants } from './tenants.js';
 import { traces } from './traces.js';
 import { traceSteps } from './trace-steps.js';
 
@@ -13,9 +12,7 @@ export const toolCalls = pgTable(
     stepId: text('step_id')
       .notNull()
       .references(() => traceSteps.id),
-    tenantId: text('tenant_id')
-      .notNull()
-      .references(() => tenants.id),
+    tenantId: text('tenant_id').notNull(),
     toolName: text('tool_name').notNull(),
     success: boolean('success').notNull(),
     latencyMs: integer('latency_ms').notNull(),

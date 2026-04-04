@@ -4,11 +4,6 @@ import { traceSteps } from './trace-steps.js';
 import { modelCalls } from './model-calls.js';
 import { toolCalls } from './tool-calls.js';
 import { failureEvents } from './failure-events.js';
-import { tenants } from './tenants.js';
-
-export const tenantsRelations = relations(tenants, ({ many }) => ({
-  traces: many(traces),
-}));
 
 export const tracesRelations = relations(traces, ({ many }) => ({
   steps: many(traceSteps),

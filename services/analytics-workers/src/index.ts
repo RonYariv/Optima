@@ -7,7 +7,6 @@ import {
   ModelCallRepository,
   ToolCallRepository,
   FailureEventRepository,
-  tenants,
 } from '@agent-optima/db';
 import { PgmqQueue, runWorker } from '@agent-optima/queue';
 import type { ModelCallIngest, ToolCallIngest } from '@agent-optima/schemas';
@@ -29,13 +28,6 @@ async function main() {
 
   // ── DB ──────────────────────────────────────────────────────────────────── 
   const db = createDbClient(config.DATABASE_URL);
-
-  // ── Seed default tenant (idempotent) ─────────────────────────────────────
-  await db
-    .insert(tenants)
-    .values({ id: config.TENANT_ID, name: config.TENANT_ID })
-    .onConflictDoNothing();
-  console.log(`Tenant '${config.TENANT_ID}' ready.`);
 
   const traceRepo = new TraceRepository(db);
   const modelCallRepo = new ModelCallRepository(db);

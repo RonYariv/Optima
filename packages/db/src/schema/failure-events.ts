@@ -1,5 +1,4 @@
 import { pgEnum, pgTable, text, timestamp, jsonb, index } from 'drizzle-orm/pg-core';
-import { tenants } from './tenants.js';
 import { traces } from './traces.js';
 import { traceSteps } from './trace-steps.js';
 
@@ -28,9 +27,7 @@ export const failureEvents = pgTable(
     stepId: text('step_id')
       .notNull()
       .references(() => traceSteps.id),
-    tenantId: text('tenant_id')
-      .notNull()
-      .references(() => tenants.id),
+    tenantId: text('tenant_id').notNull(),
     severity: failureSeverityEnum('severity').notNull(),
     category: failureCategoryEnum('category').notNull(),
     reason: text('reason').notNull(),

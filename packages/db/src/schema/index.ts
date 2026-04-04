@@ -1,4 +1,3 @@
-export * from './tenants.js';
 export * from './traces.js';
 export * from './trace-steps.js';
 export * from './model-calls.js';

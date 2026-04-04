@@ -1,5 +1,4 @@
 import { pgEnum, pgTable, text, timestamp, integer, jsonb, index } from 'drizzle-orm/pg-core';
-import { tenants } from './tenants.js';
 import { traces } from './traces.js';
 
 export const stepTypeEnum = pgEnum('step_type', ['model', 'tool']);
@@ -11,9 +10,7 @@ export const traceSteps = pgTable(
     traceId: text('trace_id')
       .notNull()
       .references(() => traces.id),
-    tenantId: text('tenant_id')
-      .notNull()
-      .references(() => tenants.id),
+    tenantId: text('tenant_id').notNull(),
     stepIndex: integer('step_index').notNull(),
     agentId: text('agent_id').notNull(),
     type: stepTypeEnum('type').notNull(),
