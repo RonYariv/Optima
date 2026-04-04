@@ -1,4 +1,4 @@
-import { pgEnum, pgTable, text, timestamp, integer, real, index } from 'drizzle-orm/pg-core';
+import { pgEnum, pgTable, text, timestamp, integer, numeric, index } from 'drizzle-orm/pg-core';
 import { traces } from './traces.js';
 import { traceSteps } from './trace-steps.js';
 
@@ -25,12 +25,15 @@ export const modelCalls = pgTable(
     inputTokens: integer('input_tokens').notNull(),
     outputTokens: integer('output_tokens').notNull(),
     latencyMs: integer('latency_ms').notNull(),
-    costUsd: real('cost_usd').notNull().default(0),
+    costUsd: numeric('cost_usd', { precision: 14, scale: 8 }).notNull().default('0'),
     requestedAt: timestamp('requested_at', { withTimezone: true }).notNull(),
     respondedAt: timestamp('responded_at', { withTimezone: true }).notNull(),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [index('model_calls_tenant_created_idx').on(t.tenantId, t.createdAt)],
+  (t) => [
+    index('model_calls_tenant_created_idx').on(t.tenantId, t.createdAt),
+    index('model_calls_trace_id_idx').on(t.traceId),
+  ],
 );
 
 export type ModelCall = typeof modelCalls.$inferSelect;

@@ -1,0 +1,77 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "agent-optima.fullname" . }}-control-api
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "agent-optima.labels" . | nindent 4 }}
+    app.kubernetes.io/component: control-api
+spec:
+  replicas: {{ .Values.controlApi.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "agent-optima.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: control-api
+  template:
+    metadata:
+      labels:
+        {{- include "agent-optima.labels" . | nindent 8 }}
+        app.kubernetes.io/component: control-api
+      annotations:
+        {{- toYaml .Values.podAnnotations | nindent 8 }}
+    spec:
+      {{- with .Values.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: control-api
+          image: "{{ .Values.images.controlApi.repository }}:{{ include "agent-optima.imageTag" (dict "global" .Values.global "svc" .Values.images.controlApi) }}"
+          imagePullPolicy: {{ .Values.images.controlApi.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.controlApi.port }}
+              protocol: TCP
+          env:
+            {{- include "agent-optima.commonEnv" . | nindent 12 }}
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "agent-optima.secretName" . }}
+                  key: jwt-secret
+            - name: PORT
+              value: {{ .Values.controlApi.port | quote }}
+            - name: LOG_LEVEL
+              value: {{ .Values.controlApi.logLevel | quote }}
+            - name: CORS_ORIGIN
+              value: {{ .Values.controlApi.corsOrigin | quote }}
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          resources:
+            {{- toYaml .Values.controlApi.resources | nindent 12 }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

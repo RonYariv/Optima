@@ -48,12 +48,16 @@ export class PgmqQueue<T> implements IQueue<T> {
 
   async enqueueMany(payloads: T[]): Promise<bigint[]> {
     if (payloads.length === 0) return [];
-    const results: bigint[] = [];
-    for (const payload of payloads) {
-      const id = await this.enqueue(payload);
-      results.push(id);
-    }
-    return results;
+    if (payloads.length === 1) return [await this.enqueue(payloads[0]!)];
+    // Single round-trip: serialize as a JSON array, expand in SQL via jsonb_array_elements
+    const jsonArrayString = JSON.stringify(payloads);
+    const rows = await this.sql<{ msg_id: string }[]>`
+      SELECT unnest(pgmq.send_batch(
+        ${this.name},
+        ARRAY(SELECT value FROM jsonb_array_elements(${jsonArrayString}::jsonb))
+      )) AS msg_id
+    `;
+    return rows.map((r) => BigInt(r.msg_id));
   }
 
   async read(visibilityTimeoutSecs = 30, qty = 1): Promise<QueueMessage<T>[]> {

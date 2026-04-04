@@ -1,0 +1,22 @@
+{
+  "name": "@agent-optima/cli",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "optima-ctl — Agent-Optima management CLI",
+  "bin": {
+    "optima-ctl": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "npm run typecheck"
+  },
+  "dependencies": {
+    "jose": "^5.10.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.14.0",
+    "typescript": "^5.8.3"
+  }
+}

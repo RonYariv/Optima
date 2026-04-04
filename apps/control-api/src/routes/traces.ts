@@ -14,16 +14,15 @@ import {
   type FailureEvent,
 } from '@agent-optima/db';
 import { encodeCursor, decodeCursor } from '../lib/cursor.js';
+import { PaginationSchema } from '../lib/pagination.js';
 import { z } from 'zod';
 
-const QuerySchema = z.object({
+const QuerySchema = PaginationSchema.extend({
   projectId: z.string().optional(),
   status: z.enum(['running', 'success', 'failed', 'partial']).optional(),
-  from: z.string().datetime().optional(),
-  to: z.string().datetime().optional(),
-  limit: z.coerce.number().int().min(1).max(100).default(20),
-  cursor: z.string().optional(),
 });
+
+const TraceIdParamSchema = z.object({ traceId: z.string().min(1).max(128) });
 
 type StepWithDetails = TraceStep & {
   modelCalls: ModelCall[];
@@ -39,24 +38,28 @@ type RFNode = {
 };
 type RFEdge = { id: string; source: string; target: string };
 
+const GRAPH_STEP_HEIGHT_PX = 120;
+
 async function fetchTraceWithSteps(
   db: DbClient,
   traceId: string,
   tenantId: string,
 ): Promise<(Trace & { steps: StepWithDetails[] }) | null> {
-  const [trace] = await db
-    .select()
-    .from(traces)
-    .where(and(eq(traces.id, traceId), eq(traces.tenantId, tenantId)))
-    .limit(1);
+  // Fetch trace and steps concurrently — steps only need traceId (already known)
+  const [[trace], steps] = await Promise.all([
+    db
+      .select()
+      .from(traces)
+      .where(and(eq(traces.id, traceId), eq(traces.tenantId, tenantId)))
+      .limit(1),
+    db
+      .select()
+      .from(traceSteps)
+      .where(eq(traceSteps.traceId, traceId))
+      .orderBy(asc(traceSteps.stepIndex)),
+  ]);
 
   if (!trace) return null;
-
-  const steps = await db
-    .select()
-    .from(traceSteps)
-    .where(eq(traceSteps.traceId, traceId))
-    .orderBy(asc(traceSteps.stepIndex));
 
   const stepIds = steps.map((s) => s.id);
   if (stepIds.length === 0) return { ...trace, steps: [] };
@@ -148,7 +151,9 @@ export function buildTraceRoutes(db: DbClient) {
 
     // GET /v1/traces/:traceId
     app.get<{ Params: { traceId: string } }>('/v1/traces/:traceId', async (request, reply) => {
-      const { traceId } = request.params;
+      const p = TraceIdParamSchema.safeParse(request.params);
+      if (!p.success) return reply.code(400).send({ error: 'InvalidParam' });
+      const { traceId } = p.data;
       const trace = await fetchTraceWithSteps(db, traceId, request.tenantId);
       if (!trace) return reply.code(404).send({ error: 'NotFound' });
       return reply.send(trace);
@@ -156,7 +161,9 @@ export function buildTraceRoutes(db: DbClient) {
 
     // GET /v1/traces/:traceId/graph  — React Flow compatible
     app.get<{ Params: { traceId: string } }>('/v1/traces/:traceId/graph', async (request, reply) => {
-      const { traceId } = request.params;
+      const p = TraceIdParamSchema.safeParse(request.params);
+      if (!p.success) return reply.code(400).send({ error: 'InvalidParam' });
+      const { traceId } = p.data;
       const trace = await fetchTraceWithSteps(db, traceId, request.tenantId);
       if (!trace) return reply.code(404).send({ error: 'NotFound' });
 
@@ -174,7 +181,7 @@ export function buildTraceRoutes(db: DbClient) {
       trace.steps.forEach((step: StepWithDetails, i: number) => {
         const failure = step.failureEvents[0] ?? null;
         const stepStatus = failure ? 'failed' : 'success';
-        const yPos = (i + 1) * 120;
+        const yPos = (i + 1) * GRAPH_STEP_HEIGHT_PX;
 
         if (step.type === 'model') {
           const mc = step.modelCalls[0] ?? null;

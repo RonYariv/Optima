@@ -39,6 +39,8 @@ export const ToolCallIngestSchema = z.object({
   metadata: z.record(z.unknown()).default({})
 });
 
+// CostEventSchema and FailureEventSchema are reserved for a future direct-ingest
+// endpoint. They are not consumed by any service today — do not remove.
 export const CostEventSchema = z.object({
   tenantId: TenantIdSchema,
   traceId: TraceIdSchema,

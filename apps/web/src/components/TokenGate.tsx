@@ -11,7 +11,7 @@ export default function TokenGate({ onSave }: Props) {
     e.preventDefault()
     const trimmed = value.trim()
     if (!trimmed) return
-    localStorage.setItem('ao_token', trimmed)
+    sessionStorage.setItem('ao_token', trimmed)
     onSave(trimmed)
   }
 

@@ -8,7 +8,7 @@ import FailuresPage from './pages/FailuresPage'
 import CostPage from './pages/CostPage'
 
 export default function App() {
-  const [token, setToken] = useState(() => localStorage.getItem('ao_token') ?? '')
+  const [token, setToken] = useState(() => sessionStorage.getItem('ao_token') ?? '')
 
   if (!token) return <TokenGate onSave={setToken} />
 

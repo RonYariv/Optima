@@ -21,7 +21,10 @@ export const toolCalls = pgTable(
     respondedAt: timestamp('responded_at', { withTimezone: true }).notNull(),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [index('tool_calls_tenant_created_idx').on(t.tenantId, t.createdAt)],
+  (t) => [
+    index('tool_calls_tenant_created_idx').on(t.tenantId, t.createdAt),
+    index('tool_calls_trace_id_idx').on(t.traceId),
+  ],
 );
 
 export type ToolCall = typeof toolCalls.$inferSelect;

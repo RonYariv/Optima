@@ -13,7 +13,7 @@ const ConfigSchema = z.object({
   LOG_LEVEL: z.enum(['trace', 'debug', 'info', 'warn', 'error', 'fatal']).default('info'),
 
   // JWT
-  JWT_SECRET: z.string().min(32).default('insecure-dev-secret-change-in-production!!'),
+  JWT_SECRET: z.string().min(32),
   JWT_ISSUER: z.string().default('agent-optima'),
   JWT_AUDIENCE: z.string().default('agent-optima-api'),
 

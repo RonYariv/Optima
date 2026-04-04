@@ -14,7 +14,7 @@ const ConfigSchema = z.object({
   DATABASE_URL: z.string().url(),
   DATABASE_SSL: z.enum(['disable', 'require']).default('require'),
 
-  JWT_SECRET: z.string().min(32).default('insecure-dev-secret-change-in-production!!'),
+  JWT_SECRET: z.string().min(32),
   JWT_ISSUER: z.string().default('agent-optima'),
   JWT_AUDIENCE: z.string().default('agent-optima-api'),
 

@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "agent-optima.fullname" . }}-web
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "agent-optima.labels" . | nindent 4 }}
+    app.kubernetes.io/component: web
+spec:
+  type: {{ .Values.web.service.type }}
+  ports:
+    - port: {{ .Values.web.service.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "agent-optima.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: web

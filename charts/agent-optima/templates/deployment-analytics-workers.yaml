@@ -1,0 +1,63 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "agent-optima.fullname" . }}-analytics-workers
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "agent-optima.labels" . | nindent 4 }}
+    app.kubernetes.io/component: analytics-workers
+spec:
+  replicas: {{ .Values.analyticsWorkers.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "agent-optima.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: analytics-workers
+  template:
+    metadata:
+      labels:
+        {{- include "agent-optima.labels" . | nindent 8 }}
+        app.kubernetes.io/component: analytics-workers
+      annotations:
+        {{- toYaml .Values.podAnnotations | nindent 8 }}
+    spec:
+      {{- with .Values.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      # ── Init container: apply DB migrations before workers start ──────────
+      initContainers:
+        - name: db-migrate
+          image: "{{ .Values.images.analyticsWorkers.repository }}:{{ include "agent-optima.imageTag" (dict "global" .Values.global "svc" .Values.images.analyticsWorkers) }}"
+          imagePullPolicy: {{ .Values.images.analyticsWorkers.pullPolicy }}
+          command: ["node", "/app/packages/db/dist/migrate-entry.js"]
+          env:
+            {{- include "agent-optima.commonEnv" . | nindent 12 }}
+      # ── Main worker container ─────────────────────────────────────────────
+      containers:
+        - name: analytics-workers
+          image: "{{ .Values.images.analyticsWorkers.repository }}:{{ include "agent-optima.imageTag" (dict "global" .Values.global "svc" .Values.images.analyticsWorkers) }}"
+          imagePullPolicy: {{ .Values.images.analyticsWorkers.pullPolicy }}
+          env:
+            {{- include "agent-optima.commonEnv" . | nindent 12 }}
+            - name: LOG_LEVEL
+              value: {{ .Values.analyticsWorkers.logLevel | quote }}
+            - name: POLL_INTERVAL_MS
+              value: {{ .Values.analyticsWorkers.pollIntervalMs | quote }}
+            - name: VISIBILITY_TIMEOUT_SECS
+              value: {{ .Values.analyticsWorkers.visibilityTimeoutSecs | quote }}
+            - name: MAX_RETRIES
+              value: {{ .Values.analyticsWorkers.maxRetries | quote }}
+          resources:
+            {{- toYaml .Values.analyticsWorkers.resources | nindent 12 }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

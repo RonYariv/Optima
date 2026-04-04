@@ -2,12 +2,11 @@ import type { FastifyInstance } from 'fastify';
 import { and, eq, gte, lte, sql, sum } from 'drizzle-orm';
 import type { DbClient } from '@agent-optima/db';
 import { modelCalls } from '@agent-optima/db';
+import { PaginationSchema } from '../lib/pagination.js';
 import { z } from 'zod';
 
-const QuerySchema = z.object({
+const QuerySchema = PaginationSchema.extend({
   projectId: z.string().optional(),
-  from: z.string().datetime().optional(),
-  to: z.string().datetime().optional(),
   groupBy: z.enum(['day', 'model', 'agent']).default('day'),
 });
 
@@ -77,8 +76,8 @@ export function buildCostRoutes(db: DbClient) {
           callCount: Number(r.callCount ?? 0),
         }));
       } else {
-        // groupBy === 'agent' — join through traces
-        breakdown = [];
+        // groupBy === 'agent' — not yet implemented
+        return reply.code(422).send({ error: 'InvalidQuery', message: "groupBy='agent' is not yet implemented" });
       }
 
       return reply.send({

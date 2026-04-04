@@ -38,7 +38,7 @@ export class ModelCallWorker {
       id: data.stepId,
       traceId: data.traceId,
       tenantId: data.tenantId,
-      stepIndex: 0, // gateway will send step index in metadata; default 0 for now
+      stepIndex: 0, // TODO: add stepIndex field to ModelCallIngestSchema and propagate from SDK
       agentId: data.agentId,
       type: 'model',
       startedAt: new Date(data.requestAt),
@@ -65,7 +65,7 @@ export class ModelCallWorker {
       inputTokens: data.inputTokens,
       outputTokens: data.outputTokens,
       latencyMs: data.latencyMs,
-      costUsd,
+      costUsd: costUsd.toFixed(8),
       requestedAt: new Date(data.requestAt),
       respondedAt: new Date(data.responseAt),
       createdAt: now,

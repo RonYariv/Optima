@@ -32,10 +32,14 @@ export const failureEvents = pgTable(
     category: failureCategoryEnum('category').notNull(),
     reason: text('reason').notNull(),
     evidence: jsonb('evidence').notNull().default({}),
+    rootCause: text('root_cause'),
     occurredAt: timestamp('occurred_at', { withTimezone: true }).notNull(),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [index('failure_events_tenant_created_idx').on(t.tenantId, t.createdAt)],
+  (t) => [
+    index('failure_events_tenant_created_idx').on(t.tenantId, t.createdAt),
+    index('failure_events_trace_id_idx').on(t.traceId),
+  ],
 );
 
 export type FailureEvent = typeof failureEvents.$inferSelect;

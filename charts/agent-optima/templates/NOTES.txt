@@ -1,0 +1,38 @@
+Agent-Optima has been deployed!
+
+ENDPOINTS
+  API Gateway  (ingest):   http://{{ include "agent-optima.fullname" . }}-api-gateway.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.apiGateway.service.port }}
+  Control API  (query):    http://{{ include "agent-optima.fullname" . }}-control-api.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.controlApi.service.port }}
+  Web Dashboard:           http://{{ include "agent-optima.fullname" . }}-web.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.web.service.port }}
+
+FIRST STEPS
+  1. Generate a bearer token:
+       kubectl run optima-ctl --rm -it --restart=Never \
+         --image=ghcr.io/ronyariv/optima/analytics-workers:latest \
+         --env="JWT_SECRET=$(kubectl get secret {{ include "agent-optima.secretName" . }} \
+                  -o jsonpath='{.data.jwt-secret}' | base64 -d)" \
+         -- node /app/packages/cli/dist/index.js token generate --tenant my-project
+
+     Or locally with optima-ctl (packages/cli):
+       JWT_SECRET=<your-secret> optima-ctl token generate --tenant my-project
+
+  2. Point your SDK at the gateway:
+       NODE_SDK:
+         import { OptimaClient } from '@agent-optima/sdk-node';
+         const client = new OptimaClient({ baseUrl: 'http://<gateway-svc>:3000', token: '<token>' });
+
+       PYTHON_SDK:
+         from optima_sdk import OptimaClient
+         client = OptimaClient(base_url="http://<gateway-svc>:3000", token="<token>")
+
+  3. Open the dashboard (port-forward if no Ingress):
+       kubectl port-forward svc/{{ include "agent-optima.fullname" . }}-web {{ .Values.web.service.port }}:{{ .Values.web.service.port }} -n {{ .Release.Namespace }}
+     Then visit http://localhost:{{ .Values.web.service.port }}
+
+  4. Check pod health:
+       kubectl get pods -n {{ .Release.Namespace }} -l app.kubernetes.io/instance={{ .Release.Name }}
+
+CONFIGURATION
+  secret.jwtSecret   — rotate with `kubectl edit secret {{ include "agent-optima.secretName" . }}`
+  secret.databaseUrl — points at your Postgres instance
+  See values.yaml for full configuration reference.

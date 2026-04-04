@@ -1,7 +1,6 @@
-import type { FastifyInstance } from 'fastify';
-import { jwtVerify } from 'jose';
 import fp from 'fastify-plugin';
-import { config } from '../config.js';
+import { jwtVerify } from 'jose';
+import type { FastifyInstance } from 'fastify';
 
 declare module 'fastify' {
   interface FastifyRequest {
@@ -9,9 +8,23 @@ declare module 'fastify' {
   }
 }
 
-const JWT_KEY = new TextEncoder().encode(config.JWT_SECRET);
+export interface AuthPluginOptions {
+  jwtSecret: string;
+  jwtIssuer: string;
+  jwtAudience: string;
+}
 
-export const authPlugin = fp(async (app: FastifyInstance) => {
+/**
+ * Shared JWT authentication plugin — used by api-gateway and control-api.
+ *
+ * Expects a Bearer token in the Authorization header.
+ * The token payload must include `tenantId`.
+ *
+ * Routes can opt out by adding `{ config: { public: true } }` to their schema options.
+ */
+export const authPlugin = fp(async (app: FastifyInstance, opts: AuthPluginOptions) => {
+  const JWT_KEY = new TextEncoder().encode(opts.jwtSecret);
+
   app.addHook('onRequest', async (request, reply) => {
     const routeConfig = (request.routeOptions as { config?: { public?: boolean } })?.config;
     if (routeConfig?.public === true) return;
@@ -24,14 +37,16 @@ export const authPlugin = fp(async (app: FastifyInstance) => {
     const token = authHeader.slice(7);
     try {
       const { payload } = await jwtVerify(token, JWT_KEY, {
-        issuer: config.JWT_ISSUER,
-        audience: config.JWT_AUDIENCE,
+        issuer: opts.jwtIssuer,
+        audience: opts.jwtAudience,
         algorithms: ['HS256'],
       });
+
       const tenantId = payload['tenantId'];
       if (typeof tenantId !== 'string' || tenantId.length === 0) {
         return reply.code(401).send({ error: 'Unauthorized', message: 'Missing tenantId in token' });
       }
+
       request.tenantId = tenantId;
     } catch {
       return reply.code(401).send({ error: 'Unauthorized', message: 'Invalid or expired token' });

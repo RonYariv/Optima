@@ -1,5 +1,6 @@
 import type { ToolCallIngest } from '@agent-optima/schemas';
 import type { TraceRepository, ToolCallRepository, FailureEventRepository } from '@agent-optima/db';
+import { classifyRootCause } from '../root-cause-classifier.js';
 
 /**
  * Handles a tool-call ingest job:
@@ -35,7 +36,7 @@ export class ToolCallWorker {
       id: data.stepId,
       traceId: data.traceId,
       tenantId: data.tenantId,
-      stepIndex: 0,
+      stepIndex: 0, // TODO: add stepIndex field to ToolCallIngestSchema and propagate from SDK
       agentId: data.agentId,
       type: 'tool',
       startedAt: new Date(data.requestAt),
@@ -61,6 +62,7 @@ export class ToolCallWorker {
 
     // 4. Auto-generate failure event on tool error
     if (!data.success) {
+      const rootCause = classifyRootCause(data.errorType, data.toolName);
       await this.failureRepo.insert({
         id: `${data.stepId}:failure`,
         traceId: data.traceId,
@@ -74,6 +76,7 @@ export class ToolCallWorker {
           errorType: data.errorType ?? null,
           metadata: data.metadata,
         },
+        rootCause,
         occurredAt: new Date(data.responseAt),
         createdAt: now,
       });

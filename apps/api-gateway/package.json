@@ -13,6 +13,7 @@
     "start": "node --env-file=../../.env dist/index.js"
   },
   "dependencies": {
+    "@agent-optima/fastify-auth": "*",
     "@agent-optima/queue": "*",
     "@agent-optima/schemas": "*",
     "@fastify/helmet": "^12.0.1",

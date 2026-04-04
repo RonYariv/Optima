@@ -3,15 +3,12 @@ import { and, eq, lt, or, desc, gte, lte } from 'drizzle-orm';
 import type { DbClient } from '@agent-optima/db';
 import { failureEvents } from '@agent-optima/db';
 import { encodeCursor, decodeCursor } from '../lib/cursor.js';
+import { PaginationSchema } from '../lib/pagination.js';
 import { z } from 'zod';
 
-const QuerySchema = z.object({
+const QuerySchema = PaginationSchema.extend({
   severity: z.enum(['low', 'medium', 'high', 'critical']).optional(),
   category: z.enum(['tool_error', 'provider_error', 'logic_break', 'handoff_error', 'unknown']).optional(),
-  from: z.string().datetime().optional(),
-  to: z.string().datetime().optional(),
-  limit: z.coerce.number().int().min(1).max(100).default(20),
-  cursor: z.string().optional(),
 });
 
 export function buildFailureRoutes(db: DbClient) {

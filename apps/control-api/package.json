@@ -14,6 +14,7 @@
   },
   "dependencies": {
     "@agent-optima/db": "*",
+    "@agent-optima/fastify-auth": "*",
     "@agent-optima/schemas": "*",
     "@fastify/cors": "^10.0.2",
     "@fastify/helmet": "^12.0.1",

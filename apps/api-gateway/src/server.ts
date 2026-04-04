@@ -3,7 +3,7 @@ import fastifyHelmet from '@fastify/helmet';
 import fastifyRateLimit from '@fastify/rate-limit';
 import { config } from './config.js';
 import { requestIdPlugin } from './plugins/request-id.js';
-import { authPlugin } from './plugins/auth.js';
+import { authPlugin } from '@agent-optima/fastify-auth';
 import { queuePlugin } from './plugins/queue.js';
 import { healthRoutes } from './routes/health.js';
 import { buildIngestRoutes } from './routes/ingest.js';
@@ -35,7 +35,11 @@ export async function createServer() {
 
   // ── Plugins ───────────────────────────────────────────────────────────────
   await app.register(requestIdPlugin);
-  await app.register(authPlugin);
+  await app.register(authPlugin, {
+    jwtSecret: config.JWT_SECRET,
+    jwtIssuer: config.JWT_ISSUER,
+    jwtAudience: config.JWT_AUDIENCE,
+  });
   await app.register(queuePlugin);
 
   // ── Provider adapter ─────────────────────────────────────────────────────

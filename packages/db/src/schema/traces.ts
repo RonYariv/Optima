@@ -20,7 +20,10 @@ export const traces = pgTable(
     metadata: jsonb('metadata').notNull().default({}),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [index('traces_tenant_created_idx').on(t.tenantId, t.createdAt)],
+  (t) => [
+    index('traces_tenant_created_idx').on(t.tenantId, t.createdAt),
+    index('traces_tenant_project_idx').on(t.tenantId, t.projectId),
+  ],
 );
 
 export type Trace = typeof traces.$inferSelect;

@@ -15,6 +15,20 @@
       "when": 1775322665316,
       "tag": "0001_swift_spyke",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1775323000000,
+      "tag": "0002_root_cause",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1743800000000,
+      "tag": "0003_indexes_and_numeric_cost",
+      "breakpoints": true
     }
   ]
 }
