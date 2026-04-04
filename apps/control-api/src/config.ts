@@ -12,6 +12,7 @@ const ConfigSchema = z.object({
   LOG_LEVEL: z.enum(['trace', 'debug', 'info', 'warn', 'error', 'fatal']).default('info'),
 
   DATABASE_URL: z.string().url(),
+  DATABASE_SSL: z.enum(['disable', 'require']).default('require'),
 
   JWT_SECRET: z.string().min(32).default('insecure-dev-secret-change-in-production!!'),
   JWT_ISSUER: z.string().default('agent-optima'),

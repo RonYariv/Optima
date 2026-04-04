@@ -12,11 +12,15 @@ export type DbClient = ReturnType<typeof createDbClient>;
  * Nothing outside this file needs to change.
  */
 export function createDbClient(connectionString: string) {
+  const sslMode = process.env['DATABASE_SSL'] === 'disable'
+    ? false
+    : connectionString.includes('localhost') ? false : 'require';
+
   const pg = postgres(connectionString, {
     max: 10,
     idle_timeout: 20,
     connect_timeout: 10,
-    ssl: connectionString.includes('localhost') ? false : 'require',
+    ssl: sslMode,
   });
 
   return drizzle(pg, { schema });

@@ -22,8 +22,9 @@ const ConfigSchema = z.object({
   OPENAI_API_KEY: z.string().optional(),
   OPENAI_BASE_URL: z.string().url().default('https://api.openai.com/v1'),
 
-  // Database / Queue (Supabase)
+  // Database / Queue
   DATABASE_URL: z.string().url().optional(), // optional in mock/dev mode
+  DATABASE_SSL: z.enum(['disable', 'require']).default('require'),
 
   // Limits
   RATE_LIMIT_MAX: z.coerce.number().int().positive().default(200),

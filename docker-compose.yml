@@ -1,0 +1,99 @@
+# Agent-Optima — self-hosted docker-compose stack
+# Usage:
+#   cp .env.example .env && <edit .env>
+#   docker compose up --build
+
+services:
+  # ── Postgres + PGMQ ──────────────────────────────────────────────────────────
+  postgres:
+    image: pgvecto-rs/pgvecto-rs:pg16-v0.4.0
+    # simpler alternative if pgvecto-rs is unavailable:
+    # image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: optima
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
+      POSTGRES_DB: agentoptima
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/init.sql:/docker-entrypoint-initdb.d/01-pgmq.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U optima -d agentoptima"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+
+  # ── Analytics Workers (also runs DB migrations + tenant seed at startup) ─────
+  analytics-workers:
+    build:
+      context: .
+      dockerfile: services/analytics-workers/Dockerfile
+    environment:
+      DATABASE_URL: postgresql://optima:${POSTGRES_PASSWORD:-changeme}@postgres:5432/agentoptima
+      DATABASE_SSL: disable
+      TENANT_ID: ${TENANT_ID:-default}
+      NODE_ENV: production
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ── API Gateway (ingest endpoint for agents) ──────────────────────────────────
+  api-gateway:
+    build:
+      context: .
+      dockerfile: apps/api-gateway/Dockerfile
+    environment:
+      DATABASE_URL: postgresql://optima:${POSTGRES_PASSWORD:-changeme}@postgres:5432/agentoptima
+      DATABASE_SSL: disable
+      JWT_SECRET: ${JWT_SECRET}
+      TENANT_ID: ${TENANT_ID:-default}
+      NODE_ENV: production
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      PORT: 3000
+    ports:
+      - "3000:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ── Control API (dashboard backend) ──────────────────────────────────────────
+  control-api:
+    build:
+      context: .
+      dockerfile: apps/control-api/Dockerfile
+    environment:
+      DATABASE_URL: postgresql://optima:${POSTGRES_PASSWORD:-changeme}@postgres:5432/agentoptima
+      DATABASE_SSL: disable
+      JWT_SECRET: ${JWT_SECRET}
+      TENANT_ID: ${TENANT_ID:-default}
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:5173}
+      NODE_ENV: production
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      PORT: 3001
+    ports:
+      - "3001:3001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ── Web Dashboard ─────────────────────────────────────────────────────────────
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:3001}
+    ports:
+      - "5173:80"
+    depends_on:
+      - control-api
+    restart: unless-stopped
+
+volumes:
+  postgres_data:

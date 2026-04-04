@@ -2,10 +2,12 @@ import postgres from 'postgres';
 import { config } from './config.js';
 import {
   createDbClient,
+  runMigrations,
   TraceRepository,
   ModelCallRepository,
   ToolCallRepository,
   FailureEventRepository,
+  tenants,
 } from '@agent-optima/db';
 import { PgmqQueue, runWorker } from '@agent-optima/queue';
 import type { ModelCallIngest, ToolCallIngest } from '@agent-optima/schemas';
@@ -20,8 +22,21 @@ const QUEUE_TOOL_CALL = 'tool-call-ingest';
 async function main() {
   console.log('Analytics workers starting...');
 
-  // ── DB ────────────────────────────────────────────────────────────────────
+  // ── Migrations ──────────────────────────────────────────────────────────── 
+  console.log('Running DB migrations...');
+  await runMigrations(config.DATABASE_URL);
+  console.log('Migrations applied.');
+
+  // ── DB ──────────────────────────────────────────────────────────────────── 
   const db = createDbClient(config.DATABASE_URL);
+
+  // ── Seed default tenant (idempotent) ─────────────────────────────────────
+  await db
+    .insert(tenants)
+    .values({ id: config.TENANT_ID, name: config.TENANT_ID })
+    .onConflictDoNothing();
+  console.log(`Tenant '${config.TENANT_ID}' ready.`);
+
   const traceRepo = new TraceRepository(db);
   const modelCallRepo = new ModelCallRepository(db);
   const toolCallRepo = new ToolCallRepository(db);
@@ -33,7 +48,7 @@ async function main() {
   // Swap guide: replace `pgSql` and `PgmqQueue` with any IQueue<T> implementation.
   const pgSql = postgres(config.DATABASE_URL, {
     max: 2,
-    ssl: config.DATABASE_URL.includes('localhost') ? false : 'require',
+    ssl: config.DATABASE_SSL === 'disable' ? false : 'require',
   });
 
   const modelCallQueue = new PgmqQueue<ModelCallIngest>(pgSql, QUEUE_MODEL_CALL);
