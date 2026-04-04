@@ -1,5 +1,5 @@
 {
-  "name": "@agent-optima/sdk",
+  "name": "@agent-optima/sdk-node",
   "version": "0.1.0",
   "description": "Agent-Optima ingest SDK — drop into any Node.js agent to emit telemetry",
   "type": "module",

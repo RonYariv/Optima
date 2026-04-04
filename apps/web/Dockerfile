@@ -10,7 +10,7 @@ COPY apps/web/package.json                     ./apps/web/
 COPY packages/db/package.json                  ./packages/db/
 COPY packages/queue/package.json               ./packages/queue/
 COPY packages/schemas/package.json             ./packages/schemas/
-COPY packages/sdk/package.json                 ./packages/sdk/
+COPY packages/sdk-node/package.json                 ./packages/sdk-node/
 COPY services/analytics-workers/package.json   ./services/analytics-workers/
 
 RUN npm ci

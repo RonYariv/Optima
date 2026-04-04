@@ -9,7 +9,7 @@ COPY apps/web/package.json                     ./apps/web/
 COPY packages/db/package.json                  ./packages/db/
 COPY packages/queue/package.json               ./packages/queue/
 COPY packages/schemas/package.json             ./packages/schemas/
-COPY packages/sdk/package.json                 ./packages/sdk/
+COPY packages/sdk-node/package.json                 ./packages/sdk-node/
 COPY services/analytics-workers/package.json   ./services/analytics-workers/
 
 RUN npm ci --omit=dev
@@ -25,7 +25,7 @@ COPY apps/web/package.json                     ./apps/web/
 COPY packages/db/package.json                  ./packages/db/
 COPY packages/queue/package.json               ./packages/queue/
 COPY packages/schemas/package.json             ./packages/schemas/
-COPY packages/sdk/package.json                 ./packages/sdk/
+COPY packages/sdk-node/package.json                 ./packages/sdk-node/
 COPY services/analytics-workers/package.json   ./services/analytics-workers/
 
 RUN npm ci
@@ -53,8 +53,8 @@ COPY --from=builder /app/packages/queue/dist           ./packages/queue/dist
 COPY --from=builder /app/packages/queue/package.json   ./packages/queue/package.json
 COPY --from=builder /app/packages/db/dist              ./packages/db/dist
 COPY --from=builder /app/packages/db/package.json      ./packages/db/package.json
-COPY --from=builder /app/packages/sdk/dist             ./packages/sdk/dist
-COPY --from=builder /app/packages/sdk/package.json     ./packages/sdk/package.json
+COPY --from=builder /app/packages/sdk-node/dist             ./packages/sdk-node/dist
+COPY --from=builder /app/packages/sdk-node/package.json     ./packages/sdk-node/package.json
 
 # Service
 COPY --from=builder /app/apps/api-gateway/dist         ./apps/api-gateway/dist

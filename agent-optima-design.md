@@ -84,7 +84,7 @@ Customer's K8s Cluster
 | ORM / DB | Drizzle ORM + postgres-js, Postgres 16 |
 | Queue | PGMQ (Postgres extension) |
 | Frontend | React 19, Vite 8, Tailwind CSS 4, React Flow, Recharts |
-| SDK (Node.js) | Zero-dependency ESM package (`@agent-optima/sdk`) |
+| SDK (Node.js) | Zero-dependency ESM package (`@agent-optima/sdk-node`) |
 | SDK (Python) | Zero-dependency stdlib package (`optima-sdk`) |
 | Containerisation | Docker multi-stage builds, docker-compose, Helm (planned) |
 | Migrations | Drizzle Kit — SQL files committed, applied programmatically |

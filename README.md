@@ -55,7 +55,7 @@ npm install
 ```
 
 ```ts
-import { OptimaClient } from '@agent-optima/sdk';
+import { OptimaClient } from '@agent-optima/sdk-node';
 
 const optima = new OptimaClient({
   url: process.env.OPTIMA_URL,    // http://optima-gateway:3000
