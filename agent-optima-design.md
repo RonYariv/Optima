@@ -1,380 +1,330 @@
-# Agent-Optima — Production Design Blueprint
+# Agent-Optima — Design Blueprint
 
-Version: 1.0  
-Date: 2026-04-04  
-Status: Production-ready reference architecture
+Version: 2.0
+Date: 2026-04-04
+Status: Edge / Self-Hosted
 
 ---
 
 ## 1) Product Scope and Success Criteria
 
-Agent-Optima is an observability + efficiency control plane for multi-agent AI systems.
-It must deliver:
+Agent-Optima is an **edge-deployable observability control plane** for AI agent systems.
+It runs entirely inside the customer's own infrastructure — no data ever leaves their cluster.
 
-- **Traceability**: end-to-end visibility for every agent step.
-- **Diagnosis**: fast root-cause analysis of failures.
-- **Optimization**: measurable token and model-routing savings.
-- **Reliability at Scale**: enterprise-grade uptime, security, and governance.
+Core promises:
+- **Zero-egress**: all telemetry stays inside the customer's K8s namespace.
+- **Minimal footprint**: 4 containers (gateway, control-api, workers, web) + Postgres. No external dependencies.
+- **Seamless integration**: one SDK import + one token. Agents emit telemetry in < 5 lines of code.
+- **Language-first**: first-class SDKs for **Node.js** and **Python**.
+- **Instant insight**: trace map, failure highlights, and cost dashboard out of the box.
 
 ### North-Star KPIs
 
-- Mean time to diagnose failed run (MTTD): **< 5 minutes**
-- Token cost reduction after onboarding: **20–40% in 30 days**
-- False-positive loop kills: **< 2%**
-- P95 UI trace load time (large traces): **< 2 seconds**
-- Platform availability: **99.95%**
+- Time from `helm install` to first trace visible in dashboard: **< 10 minutes**
+- SDK integration effort (experienced dev): **< 30 minutes**
+- Mean time to diagnose a failed run (MTTD): **< 5 minutes**
+- Token cost visibility: **100%** of instrumented calls accounted for
+- Gateway added latency (p95): **< 20 ms**
 
 ---
 
-## 2) High-Level Architecture
+## 2) Architecture
 
-## Core Principle
-Use a **non-invasive proxy + async analytics** pattern:
+### Deployment Model
 
-1. Customer agent sends LLM/tool call through Agent-Optima SDK.
-2. Gateway receives call, authenticates tenant, and forwards request.
-3. Provider adapter sends to OpenAI/Anthropic/etc.
-4. Response returns to customer with minimal added latency.
-5. Full telemetry event stream is processed asynchronously.
-6. Diagnostics + ROI engines compute insights and alerts.
-7. UI + APIs expose traces, failures, recommendations, and replay workflows.
+Agent-Optima runs **inside the customer's infrastructure**. The typical deployment is a
+K8s namespace with 4 pods and a Postgres instance:
 
-## Logical Components
+```
+Customer's K8s Cluster
+┌──────────────────────────────────────────────────────────────┐
+│  Namespace: agent-optima                                      │
+│                                                               │
+│  ┌─────────────┐   HTTP/JSON   ┌───────────────────────────┐ │
+│  │  Agent SDK  │ ────────────► │  api-gateway  :3000       │ │
+│  │ (Node / Py) │               │  (ingest only)            │ │
+│  └─────────────┘               └──────────┬────────────────┘ │
+│                                            │ PGMQ enqueue     │
+│  ┌─────────────┐               ┌──────────▼────────────────┐ │
+│  │   Browser   │ ◄──────────── │  control-api  :3001       │ │
+│  │  Dashboard  │   REST/JSON   │  (query / dashboard)      │ │
+│  └─────────────┘               └───────────────────────────┘ │
+│                                                               │
+│  ┌─────────────────────────────────────────────────────────┐ │
+│  │  analytics-workers  (PGMQ consumers)                    │ │
+│  │  • runs DB migrations on startup                        │ │
+│  │  • classifies failures  • calculates cost               │ │
+│  └───────────────────────────┬─────────────────────────────┘ │
+│                               │                               │
+│  ┌────────────────────────────▼──────────────────────────┐   │
+│  │  Postgres  (+ PGMQ extension)                         │   │
+│  │  5 tables: traces, trace_steps, model_calls,          │   │
+│  │            tool_calls, failure_events                  │   │
+│  └───────────────────────────────────────────────────────┘   │
+└──────────────────────────────────────────────────────────────┘
+```
 
-- **SDKs (Node.js/Python)**
-  - Drop-in wrappers over LLM/tool clients
-  - OpenTelemetry spans + request metadata capture
-  - Sampling controls and privacy redaction hooks
+### Key Design Decisions
 
-- **Edge Gateway / Proxy API**
-  - mTLS/JWT auth, rate limiting, tenant isolation
-  - Request normalization and provider routing
-  - Idempotency keys, retries, circuit breakers
-
-- **Provider Adapters**
-  - OpenAI / Anthropic / Azure OpenAI / local model gateways
-  - Unified request/response schema
-  - Streaming support and function/tool call normalization
-
-- **Event Ingestion Pipeline**
-  - Kafka (or Pub/Sub/Kinesis) as durable event backbone
-  - Separate topics for traces, costs, model outcomes, policy events
-
-- **Analytics Workers**
-  - Root-cause classifier
-  - Loop detector
-  - Prompt slimming scorer
-  - Smart routing recommender
-
-- **Data Layer**
-  - PostgreSQL: authoritative operational data
-  - ClickHouse: high-volume analytics/time-series query
-  - Redis: hot cache + distributed locks + replay session state
-  - Vector DB (pgvector or dedicated): recurring failure pattern retrieval
-  - Object Storage (S3/Azure Blob/GCS): raw payload snapshots and replay artifacts
-
-- **Control Plane APIs**
-  - REST/GraphQL for dashboard and integrations
-  - Webhooks for alerting (Slack/Teams/PagerDuty)
-
-- **Frontend (React + React Flow)**
-  - Trace graph explorer
-  - Failure spotlighting and explanations
-  - Replay sandbox with diff and rerun controls
-  - Cost governance dashboards
+| Decision | Choice | Rationale |
+|---|---|---|
+| Queue | PGMQ (Postgres extension) | No external broker needed; Postgres is already there |
+| Auth | HS256 JWT with `tenantId` claim | Stateless; one secret to manage |
+| Migrations | Drizzle Kit SQL files, auto-applied at workers startup | Zero manual steps for operators |
+| SDK transport | Plain HTTP POST | Works from any language; no gRPC/WebSocket complexity |
+| Web serving | nginx:alpine static build | Minimal image; no Node runtime in prod web container |
 
 ---
 
-## 3) Recommended Production Stack
+## 3) Stack
 
-- **Language/Runtime**: TypeScript (Node 20+) for gateway + control APIs; Python for ML-heavy analysis workers
-- **Frameworks**: Fastify/NestJS (API), React + Vite (frontend)
-- **Messaging**: Kafka (managed if possible)
-- **Databases**:
-  - PostgreSQL (primary, HA)
-  - ClickHouse (analytics)
-  - Redis (cache/locks)
-  - pgvector extension first; move to specialized vector DB only if needed
-- **Infrastructure**: Kubernetes (multi-AZ), Helm, ArgoCD/GitOps
-- **Observability**: OpenTelemetry + Prometheus + Grafana + Tempo/Jaeger + Loki
-- **Auth**: OIDC/SAML SSO for enterprise, service tokens for SDK
-- **Secrets**: cloud KMS + secrets manager
+| Layer | Technology |
+|---|---|
+| API runtime | Node.js 20, TypeScript, Fastify 5 |
+| ORM / DB | Drizzle ORM + postgres-js, Postgres 16 |
+| Queue | PGMQ (Postgres extension) |
+| Frontend | React 19, Vite 8, Tailwind CSS 4, React Flow, Recharts |
+| SDK (Node.js) | Zero-dependency ESM package (`@agent-optima/sdk`) |
+| SDK (Python) | Zero-dependency stdlib package (`optima-sdk`) |
+| Containerisation | Docker multi-stage builds, docker-compose, Helm (planned) |
+| Migrations | Drizzle Kit — SQL files committed, applied programmatically |
 
 ---
 
-## 4) Multi-Tenant and Security Design
+## 4) Data Model
 
-### Tenant Isolation
+5 tables. `tenant_id` is a plain text column (no FK) — useful as a project/team
+label within a single deployment. No `tenants` table; no multi-tenancy overhead.
 
-- Every request carries `tenant_id` and immutable `request_id`.
-- Row-Level Security in PostgreSQL for strict tenant separation.
-- Object storage paths namespaced by tenant + region.
-- Per-tenant encryption keys (or envelope encryption) for sensitive payloads.
+```
+traces
+  id · tenant_id · project_id · agent_id · status · started_at · ended_at · metadata
 
-### Security Controls
+trace_steps
+  id · trace_id · tenant_id · step_index · agent_id · type(model|tool) · started_at · ended_at
 
-- TLS 1.2+ in transit; AES-256 at rest.
-- Optional payload hashing-only mode (no raw prompt persistence).
-- PII detection + configurable redaction policies at ingestion.
-- RBAC roles: `owner`, `admin`, `engineer`, `viewer`, `finance`.
-- Fine-grained scopes for API tokens.
-- Immutable audit logs for compliance and forensic analysis.
+model_calls
+  id · trace_id · step_id · tenant_id · model_provider · model_name
+  input_tokens · output_tokens · latency_ms · cost_usd · requested_at · responded_at
 
-### Compliance Readiness
+tool_calls
+  id · trace_id · step_id · tenant_id · tool_name · success · latency_ms
+  error_type · requested_at · responded_at
 
-- SOC 2 Type II controls baseline
-- GDPR/CCPA data subject deletion workflows
-- Configurable retention windows by tenant and region
+failure_events
+  id · trace_id · step_id · tenant_id · severity · category · reason · evidence · occurred_at
+```
 
----
+### Indexes
 
-## 5) Data Model (Core Entities)
-
-- `tenants`
-- `projects`
-- `agents`
-- `traces`
-- `trace_steps`
-- `tool_calls`
-- `model_calls`
-- `cost_events`
-- `failure_events`
-- `recommendations`
-- `replay_sessions`
-- `replay_runs`
-- `alerts`
-- `audit_logs`
-
-### Critical Indexes
-
-- `(tenant_id, created_at)` on all high-volume tables
-- `(trace_id, step_index)` for fast graph reconstruction
-- `(tenant_id, status, created_at DESC)` for failure triage
-- GIN indexes for JSONB metadata fields
-
-### Partitioning Strategy
-
-- Time-based partitions (`monthly`) on event-heavy tables
-- Tenant-aware sharding only when single-cluster scaling ceiling is reached
+- `(tenant_id, created_at)` on all tables — default list queries
+- `(trace_id, step_index)` on `trace_steps` — graph reconstruction
 
 ---
 
-## 6) Feature Design (Production-Level)
+## 5) SDK Integration
 
-## A) Visual Root-Cause Diagnostics
+The SDK is the primary integration surface. It must be **invisible in the happy path**
+and **silent on errors** (never crash the customer's agent).
 
-### Pipeline
+### Node.js
 
-1. Build step DAG from `trace_steps` and hand-off edges.
-2. Run failure classifiers:
-   - tool schema mismatch
-   - provider timeout/rate-limit
-   - hallucination heuristic (policy + confidence)
-   - handoff contract violation
-3. Store explanation object with confidence and evidence.
-4. UI highlights failing node in red with reason and remediation hints.
+```ts
+import { OptimaClient } from '@agent-optima/sdk';
 
-### Best Practices
+const optima = new OptimaClient({
+  url: process.env.OPTIMA_URL,   // e.g. http://optima-gateway:3000
+  token: process.env.OPTIMA_TOKEN,
+  silent: true,                  // default — swallows network errors
+});
 
-- Keep explanations deterministic when possible.
-- Separate model-based explanations from rule-based confidence.
-- Always show raw evidence snippets (sanitized) for trust.
+const t0 = Date.now();
+const res = await openai.chat.completions.create({ model: 'gpt-4o', messages });
 
-## B) Token-Economist (ROI Engine)
+await optima.ingest.modelCall({
+  tenantId: 'my-project',
+  projectId: 'sales-agent',
+  traceId: ctx.traceId,
+  stepId: crypto.randomUUID(),
+  agentId: 'sales-agent-v2',
+  modelProvider: 'openai',
+  modelName: 'gpt-4o',
+  inputTokens: res.usage.prompt_tokens,
+  outputTokens: res.usage.completion_tokens,
+  latencyMs: Date.now() - t0,
+  requestAt: new Date(t0).toISOString(),
+  responseAt: new Date().toISOString(),
+});
+```
 
-### 1. Prompt Slimming
+### Python (sync)
 
-- Build prompt AST/sections (role, instructions, examples, context).
-- Use ablation scoring on historical outcomes.
-- Propose slimmed prompt with expected savings and risk score.
-- Support one-click A/B test in replay mode.
+```python
+from optima_sdk import OptimaClient
+import os, time, uuid
+from datetime import datetime, timezone
 
-### 2. Smart Routing
+optima = OptimaClient(
+    url=os.environ["OPTIMA_URL"],
+    token=os.environ["OPTIMA_TOKEN"],
+)
 
-- Offline evaluation matrix by task type and quality metric.
-- Policy engine routes by SLA tier:
-  - `critical_quality`
-  - `balanced`
-  - `cost_optimized`
-- Online guardrails with fallback to premium model on low confidence.
+t0 = time.time()
+response = openai_client.chat.completions.create(model="gpt-4o", messages=messages)
 
-### 3. Loop / Duplicate Detection
+optima.ingest.model_call(
+    tenant_id="my-project",
+    project_id="sales-agent",
+    trace_id=ctx.trace_id,
+    step_id=str(uuid.uuid4()),
+    agent_id="sales-agent-v2",
+    model_provider="openai",
+    model_name="gpt-4o",
+    input_tokens=response.usage.prompt_tokens,
+    output_tokens=response.usage.completion_tokens,
+    latency_ms=int((time.time() - t0) * 1000),
+    request_at=datetime.fromtimestamp(t0, tz=timezone.utc).isoformat(),
+    response_at=datetime.now(tz=timezone.utc).isoformat(),
+)
+```
 
-- Sliding-window signature on semantic + structural similarity.
-- Hard stop policy after configurable thresholds.
-- Emit kill reason + prevented cost estimate.
+### Python (async)
 
-## C) Replay Sandbox
+```python
+from optima_sdk import AsyncOptimaClient
 
-- Snapshot point-in-time state for failed step.
-- Editable artifacts: prompt, tool result, selected model, temperature.
-- Deterministic rerun mode (seeded where supported).
-- Side-effect isolation: mock external tools by default.
-- Store replay lineage and diff against original run.
-
----
-
-## 7) API Design Guidelines
-
-### API Style
-
-- Public REST first; optional GraphQL for complex trace graph queries.
-- Idempotency for all mutation endpoints.
-- Cursor pagination, never offset for large datasets.
-- Versioned APIs (`/v1`).
-
-### Key Endpoints (example)
-
-- `POST /v1/ingest/model-call`
-- `POST /v1/ingest/tool-call`
-- `GET /v1/traces/{trace_id}`
-- `GET /v1/traces/{trace_id}/graph`
-- `GET /v1/failures?status=open&severity=high`
-- `POST /v1/replay/sessions`
-- `POST /v1/replay/sessions/{id}/run`
-- `GET /v1/recommendations?type=prompt_slimming`
-- `POST /v1/policies/routing/simulate`
-
----
-
-## 8) Reliability and Performance Engineering
-
-### SLOs
-
-- Gateway p95 added latency: **< 80 ms**
-- Event ingestion durability: **at-least-once**
-- Analytics freshness lag: **< 60 seconds**
-- Trace graph query p95: **< 500 ms** (metadata only)
-
-### Resilience Patterns
-
-- Circuit breakers per provider adapter
-- Retries with exponential backoff + jitter
-- Dead-letter queues for malformed events
-- Idempotent consumers for exactly-once effect semantics
-- Graceful degradation (dashboard works even if recommendation engine is delayed)
-
-### Capacity Planning
-
-- Plan for 10x growth bursts with queue buffering
-- Horizontal autoscaling on queue lag and p95 latency
-- Load-shedding for non-critical analytics during incidents
+optima = AsyncOptimaClient(url=os.environ["OPTIMA_URL"], token=os.environ["OPTIMA_TOKEN"])
+await optima.ingest.model_call(...)
+```
 
 ---
 
-## 9) MLOps/Analytics Governance
+## 6) Auth Flow
 
-- Version all classifiers and scoring models.
-- Track offline/online drift and calibration.
-- Human-in-the-loop feedback for false diagnoses.
-- Canary deploy analytics models before full rollout.
-- Keep policy decisions explainable for enterprise trust.
+1. Operator generates a long-lived JWT at install time.
+2. Token is stored as a K8s Secret and injected as `OPTIMA_TOKEN` into agent pods.
+3. Dashboard users paste the same token on first load (stored in `localStorage`).
 
----
-
-## 10) DevEx and SDLC (Production Best Practices)
-
-- **Monorepo** with strict boundaries (`apps/`, `packages/`, `services/`)
-- **Contract-first schemas** (OpenAPI + JSON Schema + protobuf where needed)
-- **CI/CD gates**:
-  - type checks, lint, unit tests
-  - integration tests with provider mocks
-  - security scans (SAST, dependency, secret scanning)
-  - migration safety checks
-- **Progressive delivery**:
-  - blue/green or canary
-  - feature flags per tenant
-- **Testing Pyramid**:
-  - unit (core logic)
-  - integration (DB/queue/provider adapters)
-  - E2E (key user journeys)
-  - load + chaos tests
+No user accounts, no OAuth, no user DB. One secret per deployment.
 
 ---
 
-## 11) Cost Control for Your Own Platform
+## 7) API Endpoints
 
-- Tiered data retention policies (hot/warm/cold)
-- Pre-aggregation tables for dashboard queries
-- Adaptive sampling for low-value traces
-- Compression on raw payload archives
-- Autoscaling workers by ROI of pending jobs
+### Ingest (api-gateway :3000)
+
+| Method | Path | Description |
+|---|---|---|
+| `POST` | `/v1/ingest/model-call` | Record an LLM call |
+| `POST` | `/v1/ingest/tool-call` | Record a tool/function call |
+| `GET` | `/healthz` | Liveness (public) |
+
+### Query (control-api :3001)
+
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/v1/traces` | Paginated trace list |
+| `GET` | `/v1/traces/:id` | Single trace + steps |
+| `GET` | `/v1/traces/:id/graph` | React Flow nodes + edges |
+| `GET` | `/v1/failures` | Failure events |
+| `GET` | `/v1/cost/summary` | Per-model cost aggregation |
+| `GET` | `/healthz` | Liveness (public) |
 
 ---
 
-## 12) Rollout Plan
+## 8) Event Pipeline
 
-### Phase 1 (0–8 weeks) — Foundational MVP
+```
+SDK  POST /v1/ingest/model-call
+  → api-gateway: JWT auth + Zod schema validation
+  → PGMQ enqueue  (fire-and-forget, ~1 ms overhead)
+  → HTTP 202 returned to SDK
 
-- SDKs + gateway + ingestion pipeline
-- Basic trace map and failure tagging (rule-based)
-- Cost dashboard with token accounting
+PGMQ model-call-ingest queue
+  → analytics-workers poll every 1 s
+  → upsert trace + trace_step
+  → insert model_call with cost calculation
+  → archive (ack) message
+```
 
-### Phase 2 (8–16 weeks) — Optimization Engine
+Workers use `AbortController` for graceful shutdown on `SIGTERM` / `SIGINT`.
+Failed messages are retried up to `MAX_RETRIES` (default 3) then dropped with error log.
 
+---
+
+## 9) Deployment
+
+### Local (docker-compose)
+
+```bash
+cp .env.example .env
+# Set JWT_SECRET (openssl rand -hex 32) and POSTGRES_PASSWORD
+docker compose up --build
+```
+
+| Service | URL |
+|---|---|
+| api-gateway (ingest) | http://localhost:3000 |
+| control-api (dashboard backend) | http://localhost:3001 |
+| Web dashboard | http://localhost:5173 |
+
+### Kubernetes (Helm — planned)
+
+The `analytics-workers` Deployment runs DB migrations as an init container —
+no `kubectl exec` or manual migration step needed.
+
+---
+
+## 10) Repository Layout
+
+```
+apps/
+  api-gateway/       Fastify ingest API (JWT auth, PGMQ enqueue)
+  control-api/       Fastify query API (traces, failures, cost)
+  web/               React + Vite dashboard (React Flow, Recharts)
+
+packages/
+  schemas/           Zod contracts shared across gateway + workers
+  db/                Drizzle ORM client + repositories + migrations
+  queue/             PGMQ abstraction (IQueue<T> interface)
+  sdk/               Node.js SDK (zero deps, ESM)
+  sdk-python/        Python SDK (zero deps, stdlib only)
+
+services/
+  analytics-workers/ PGMQ consumers, cost calc, failure classification
+
+docker/
+  init.sql           CREATE EXTENSION IF NOT EXISTS pgmq
+```
+
+---
+
+## 11) Reliability
+
+- **Durability**: PGMQ persists messages in Postgres — survives pod restarts.
+- **At-least-once delivery**: workers ack only after successful DB write.
+- **Graceful shutdown**: `SIGTERM` drains in-flight messages before exit.
+- **Migrations**: auto-applied at workers startup; idempotent via Drizzle migration table.
+- **Silent SDK**: network errors never propagate to the customer's agent process.
+
+---
+
+## 12) Roadmap
+
+### Now (MVP ✅)
+- Dockerfiles + docker-compose
+- Node.js + Python SDKs
+- Trace map, failure dashboard, cost dashboard
+- Auto-migrations on startup
+
+### Next
+- Helm chart with readiness/liveness probes and resource limits
+- `optima-ctl token generate` CLI (replace manual Node one-liner)
+- Streaming bulk ingest endpoint (high-throughput agents)
+- Failure root-cause classifier (rule-based, no ML required)
+
+### Later
 - Prompt slimming recommender
-- Smart routing policy simulator
-- Loop detection with safe kill-switch
-
-### Phase 3 (16–28 weeks) — Enterprise Scale
-
-- Replay sandbox GA
-- SSO/SAML, advanced RBAC, audit suite
-- Multi-region deployment + DR tested
-
----
-
-## 13) Disaster Recovery and Business Continuity
-
-- Multi-AZ mandatory; multi-region for enterprise tier
-- RPO: **<= 5 minutes**, RTO: **<= 30 minutes**
-- Quarterly restore drills + failover game days
-- Backup encryption + integrity verification
-
----
-
-## 14) Risks and Mitigations
-
-- **Provider API changes** → adapter abstraction + contract tests
-- **False loop termination** → confidence thresholds + manual override
-- **Noisy recommendations** → precision/recall governance + feedback loop
-- **Data sensitivity concerns** → redaction-first mode + BYOK support
-
----
-
-## 15) “Best Possible” UX Principles
-
-- One-screen incident triage: trace, error, cost impact, next action.
-- Explain every recommendation with evidence and expected ROI.
-- Separate confidence from certainty (show both clearly).
-- Keep controls reversible (every kill/routing change can be rolled back).
-- Make finance and engineering views equally strong.
-
----
-
-## 16) Definition of Production Ready
-
-The platform is production-ready when all are true:
-
-- SLO dashboards and alerting are active and tested.
-- Tenant isolation controls validated by security review.
-- Replay and diagnostic flows pass E2E + load tests.
-- DR drills meet RPO/RTO targets.
-- Cost-saving recommendations demonstrate statistically significant gains on pilot tenants.
-
----
-
-## 17) Suggested Initial Repository Layout
-
-- `/apps/web` — React dashboard
-- `/apps/api-gateway` — ingress proxy + provider adapters
-- `/apps/control-api` — control plane APIs
-- `/services/analytics-workers` — classifiers and ROI jobs
-- `/packages/sdk-node`
-- `/packages/sdk-python`
-- `/packages/schemas`
-- `/infra/k8s`
-- `/infra/terraform`
-- `/docs`
-
-This layout supports modular growth, team ownership boundaries, and independent scaling.
+- Smart model routing by task + quality tier
+- Agent loop detector with configurable kill-switch
+- OpenTelemetry trace export (OTLP)
