@@ -70,7 +70,8 @@ async function main() {
     runWorker<ModelCallIngest>(
       modelCallQueue,
       async (payload) => {
-        const parsed = ModelCallIngestSchema.safeParse(payload);
+        const raw = typeof payload === 'string' ? JSON.parse(payload) : payload;
+        const parsed = ModelCallIngestSchema.safeParse(raw);
         if (!parsed.success) throw new Error(`Invalid model-call payload: ${parsed.error.message}`);
         await modelCallWorker.handle(parsed.data);
       },
@@ -79,7 +80,8 @@ async function main() {
     runWorker<ToolCallIngest>(
       toolCallQueue,
       async (payload) => {
-        const parsed = ToolCallIngestSchema.safeParse(payload);
+        const raw = typeof payload === 'string' ? JSON.parse(payload) : payload;
+        const parsed = ToolCallIngestSchema.safeParse(raw);
         if (!parsed.success) throw new Error(`Invalid tool-call payload: ${parsed.error.message}`);
         await toolCallWorker.handle(parsed.data);
       },

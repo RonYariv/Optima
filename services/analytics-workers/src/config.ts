@@ -1,4 +1,9 @@
 import { z } from 'zod';
+import { config as loadEnv } from 'dotenv';
+import { resolve } from 'path';
+import { fileURLToPath } from 'url';
+
+loadEnv({ path: resolve(fileURLToPath(import.meta.url), '../../../../.env') });
 
 const WorkerConfigSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),

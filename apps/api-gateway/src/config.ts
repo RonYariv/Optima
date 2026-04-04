@@ -1,4 +1,10 @@
 import { z } from 'zod';
+import { config as loadEnv } from 'dotenv';
+import { resolve } from 'path';
+import { fileURLToPath } from 'url';
+
+// Load root .env before parsing — safe to call multiple times (existing env vars win)
+loadEnv({ path: resolve(fileURLToPath(import.meta.url), '../../../../.env') });
 
 const ConfigSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
