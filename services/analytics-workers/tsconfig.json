@@ -3,11 +3,12 @@
   "compilerOptions": {
     "rootDir": "src",
     "outDir": "dist",
-    "lib": ["ES2022", "DOM"]
+    "lib": ["ES2022"]
   },
   "include": ["src/**/*.ts"],
   "references": [
     { "path": "../../packages/schemas" },
+    { "path": "../../packages/db" },
     { "path": "../../packages/queue" }
   ]
 }

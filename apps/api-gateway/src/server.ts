@@ -4,6 +4,7 @@ import fastifyRateLimit from '@fastify/rate-limit';
 import { config } from './config.js';
 import { requestIdPlugin } from './plugins/request-id.js';
 import { authPlugin } from './plugins/auth.js';
+import { queuePlugin } from './plugins/queue.js';
 import { healthRoutes } from './routes/health.js';
 import { buildIngestRoutes } from './routes/ingest.js';
 import { MockAdapter, OpenAIAdapter } from './providers/index.js';
@@ -35,6 +36,7 @@ export async function createServer() {
   // ── Plugins ───────────────────────────────────────────────────────────────
   await app.register(requestIdPlugin);
   await app.register(authPlugin);
+  await app.register(queuePlugin);
 
   // ── Provider adapter ─────────────────────────────────────────────────────
   let adapter: IProviderAdapter;
