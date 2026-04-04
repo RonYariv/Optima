@@ -7,16 +7,19 @@ import {
   ModelCallRepository,
   ToolCallRepository,
   FailureEventRepository,
+  AuditEventRepository,
 } from '@agent-optima/db';
 import { PgmqQueue, runWorker } from '@agent-optima/queue';
-import type { ModelCallIngest, ToolCallIngest } from '@agent-optima/schemas';
-import { ModelCallIngestSchema, ToolCallIngestSchema } from '@agent-optima/schemas';
+import type { ModelCallIngest, ToolCallIngest, AuditEventIngest } from '@agent-optima/schemas';
+import { ModelCallIngestSchema, ToolCallIngestSchema, AuditEventIngestSchema } from '@agent-optima/schemas';
 import { ModelCallWorker } from './workers/model-call.worker.js';
 import { ToolCallWorker } from './workers/tool-call.worker.js';
+import { AuditEventWorker } from './workers/audit-event.worker.js';
 import { StaticPricingService } from './pricing.js';
 
 const QUEUE_MODEL_CALL = 'model-call-ingest';
 const QUEUE_TOOL_CALL = 'tool-call-ingest';
+const QUEUE_AUDIT_EVENT = 'audit-event-ingest';
 
 async function main() {
   console.log('Analytics workers starting...');
@@ -33,6 +36,7 @@ async function main() {
   const modelCallRepo = new ModelCallRepository(db);
   const toolCallRepo = new ToolCallRepository(db);
   const failureRepo = new FailureEventRepository(db);
+  const auditEventRepo = new AuditEventRepository(db);
   const pricing = new StaticPricingService();
 
   // ── Queue (PGMQ via separate postgres-js connection) ──────────────────────
@@ -45,16 +49,19 @@ async function main() {
 
   const modelCallQueue = new PgmqQueue<ModelCallIngest>(pgSql, QUEUE_MODEL_CALL);
   const toolCallQueue = new PgmqQueue<ToolCallIngest>(pgSql, QUEUE_TOOL_CALL);
+  const auditEventQueue = new PgmqQueue<AuditEventIngest>(pgSql, QUEUE_AUDIT_EVENT);
 
   // Ensure queues exist (idempotent)
   await modelCallQueue.init();
   await toolCallQueue.init();
+  await auditEventQueue.init();
 
-  console.log(`Queues ready: ${QUEUE_MODEL_CALL}, ${QUEUE_TOOL_CALL}`);
+  console.log(`Queues ready: ${QUEUE_MODEL_CALL}, ${QUEUE_TOOL_CALL}, ${QUEUE_AUDIT_EVENT}`);
 
   // ── Workers ───────────────────────────────────────────────────────────────
   const modelCallWorker = new ModelCallWorker(traceRepo, modelCallRepo, pricing);
   const toolCallWorker = new ToolCallWorker(traceRepo, toolCallRepo, failureRepo);
+  const auditEventWorker = new AuditEventWorker(auditEventRepo);
 
   const ac = new AbortController();
 
@@ -91,6 +98,16 @@ async function main() {
         const parsed = ToolCallIngestSchema.safeParse(raw);
         if (!parsed.success) throw new Error(`Invalid tool-call payload: ${parsed.error.message}`);
         await toolCallWorker.handle(parsed.data);
+      },
+      workerOpts,
+    ),
+    runWorker<AuditEventIngest>(
+      auditEventQueue,
+      async (payload) => {
+        const raw = typeof payload === 'string' ? JSON.parse(payload) : payload;
+        const parsed = AuditEventIngestSchema.safeParse(raw);
+        if (!parsed.success) throw new Error(`Invalid audit-event payload: ${parsed.error.message}`);
+        await auditEventWorker.handle(parsed.data);
       },
       workerOpts,
     ),

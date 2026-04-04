@@ -1,6 +1,14 @@
 export type TraceStatus = 'running' | 'success' | 'failed' | 'partial'
 export type FailureSeverity = 'low' | 'medium' | 'high' | 'critical'
 export type CostGroupBy = 'day' | 'model' | 'agent'
+export type AuditEventKind =
+  | 'agent_start'
+  | 'agent_end'
+  | 'agent_handoff'
+  | 'model_call'
+  | 'tool_call'
+  | 'mcp_call'
+  | 'custom'
 
 export interface Trace {
   id: string
@@ -48,6 +56,24 @@ export interface CostSummaryItem {
 export interface PaginatedResponse<T> {
   data: T[]
   nextCursor?: string
+}
+
+export interface AuditEvent {
+  id: string
+  traceId: string
+  tenantId: string
+  sequenceNo: number
+  kind: AuditEventKind
+  actorId?: string | null
+  name?: string | null
+  input?: Record<string, unknown> | null
+  output?: Record<string, unknown> | null
+  latencyMs?: number | null
+  success?: boolean | null
+  error?: { type?: string; message?: string } | null
+  metadata: Record<string, unknown>
+  occurredAt: string
+  createdAt: string
 }
 
 // React Flow graph shapes returned by /v1/traces/:id/graph

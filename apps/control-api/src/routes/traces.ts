@@ -7,11 +7,13 @@ import {
   modelCalls,
   toolCalls,
   failureEvents,
+  auditEvents,
   type Trace,
   type TraceStep,
   type ModelCall,
   type ToolCall,
   type FailureEvent,
+  type AuditEvent,
 } from '@agent-optima/db';
 import { encodeCursor, decodeCursor } from '../lib/cursor.js';
 import { PaginationSchema } from '../lib/pagination.js';
@@ -221,6 +223,31 @@ export function buildTraceRoutes(db: DbClient) {
       });
 
       return reply.send({ nodes, edges });
+    });
+
+    // GET /v1/traces/:traceId/audit-log
+    app.get<{ Params: { traceId: string } }>('/v1/traces/:traceId/audit-log', async (request, reply) => {
+      const p = TraceIdParamSchema.safeParse(request.params);
+      if (!p.success) return reply.code(400).send({ error: 'InvalidParam' });
+      const { traceId } = p.data;
+      const tenantId = request.tenantId;
+
+      // Verify the trace belongs to this tenant before returning events
+      const [trace] = await db
+        .select({ id: traces.id })
+        .from(traces)
+        .where(and(eq(traces.id, traceId), eq(traces.tenantId, tenantId)))
+        .limit(1);
+
+      if (!trace) return reply.code(404).send({ error: 'NotFound' });
+
+      const events: AuditEvent[] = await db
+        .select()
+        .from(auditEvents)
+        .where(and(eq(auditEvents.traceId, traceId), eq(auditEvents.tenantId, tenantId)))
+        .orderBy(asc(auditEvents.sequenceNo));
+
+      return reply.send({ data: events });
     });
   };
 }

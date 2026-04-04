@@ -2,8 +2,10 @@ import type { FastifyInstance } from 'fastify';
 import {
   ModelCallIngestSchema,
   ToolCallIngestSchema,
+  AuditEventIngestSchema,
   type ModelCallIngest,
   type ToolCallIngest,
+  type AuditEventIngest,
 } from '@agent-optima/schemas';
 import type { IProviderAdapter } from '../providers/index.js';
 
@@ -22,7 +24,6 @@ import type { IProviderAdapter } from '../providers/index.js';
 export function buildIngestRoutes(adapter: IProviderAdapter) {
   return async function ingestRoutes(app: FastifyInstance): Promise<void> {
 
-    // ── POST /v1/ingest/model-call ─────────────────────────────────────────
     app.post<{ Body: ModelCallIngest }>(
       '/v1/ingest/model-call',
       async (request, reply) => {
@@ -114,6 +115,41 @@ export function buildIngestRoutes(adapter: IProviderAdapter) {
         return reply.code(200).send({
           traceId: data.traceId,
           stepId: data.stepId,
+          acknowledged: true,
+        });
+      },
+    );
+
+    // ── POST /v1/ingest/audit-event ────────────────────────────────────────
+    app.post<{ Body: AuditEventIngest }>(
+      '/v1/ingest/audit-event',
+      async (request, reply) => {
+        const parsed = AuditEventIngestSchema.safeParse(request.body);
+        if (!parsed.success) {
+          return reply.code(422).send({
+            error: 'UnprocessableEntity',
+            message: 'Invalid payload',
+            issues: parsed.error.issues,
+          });
+        }
+
+        const data = parsed.data;
+
+        if (data.tenantId !== request.tenantId) {
+          return reply.code(403).send({ error: 'Forbidden', message: 'tenantId mismatch' });
+        }
+
+        if (app.queues) {
+          app.queues.auditEvent.enqueue(data).catch((err: unknown) => {
+            request.log.error({ err, traceId: data.traceId }, 'Failed to enqueue audit-event');
+          });
+        } else {
+          request.log.info({ event: 'audit_event_ingested', ...data }, 'audit_event_ingested');
+        }
+
+        return reply.code(200).send({
+          traceId: data.traceId,
+          sequenceNo: data.sequenceNo,
           acknowledged: true,
         });
       },

@@ -3,17 +3,19 @@ import postgres from 'postgres';
 import type { FastifyInstance } from 'fastify';
 import { PgmqQueue } from '@agent-optima/queue';
 import type { IQueue } from '@agent-optima/queue';
-import type { ModelCallIngest, ToolCallIngest } from '@agent-optima/schemas';
+import type { ModelCallIngest, ToolCallIngest, AuditEventIngest } from '@agent-optima/schemas';
 import { config } from '../config.js';
 
 export const QUEUE_MODEL_CALL = 'model-call-ingest';
 export const QUEUE_TOOL_CALL = 'tool-call-ingest';
+export const QUEUE_AUDIT_EVENT = 'audit-event-ingest';
 
 declare module 'fastify' {
   interface FastifyInstance {
     queues: {
       modelCall: IQueue<ModelCallIngest>;
       toolCall: IQueue<ToolCallIngest>;
+      auditEvent: IQueue<AuditEventIngest>;
     } | null;
   }
 }
@@ -41,13 +43,16 @@ export const queuePlugin = fp(async (app: FastifyInstance) => {
 
   const modelCallQueue = new PgmqQueue<ModelCallIngest>(pgSql, QUEUE_MODEL_CALL);
   const toolCallQueue = new PgmqQueue<ToolCallIngest>(pgSql, QUEUE_TOOL_CALL);
+  const auditEventQueue = new PgmqQueue<AuditEventIngest>(pgSql, QUEUE_AUDIT_EVENT);
 
   await modelCallQueue.init();
   await toolCallQueue.init();
+  await auditEventQueue.init();
 
   app.decorate('queues', {
     modelCall: modelCallQueue,
     toolCall: toolCallQueue,
+    auditEvent: auditEventQueue,
   });
 
   app.addHook('onClose', async () => {

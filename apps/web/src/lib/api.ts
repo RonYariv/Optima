@@ -7,6 +7,7 @@ import type {
   TraceStatus,
   FailureSeverity,
   CostGroupBy,
+  AuditEvent,
 } from '../types'
 
 const BASE = (import.meta.env.VITE_API_URL as string | undefined) ?? 'http://localhost:3001'
@@ -70,6 +71,9 @@ export const api = {
 
     graph: (traceId: string) =>
       request<TraceGraph>(`/v1/traces/${traceId}/graph`),
+
+    auditLog: (traceId: string) =>
+      request<{ data: AuditEvent[] }>(`/v1/traces/${traceId}/audit-log`),
   },
 
   failures: {

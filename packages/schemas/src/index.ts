@@ -39,6 +39,39 @@ export const ToolCallIngestSchema = z.object({
   metadata: z.record(z.unknown()).default({})
 });
 
+export const AuditEventKindSchema = z.enum([
+  'agent_start',
+  'agent_end',
+  'agent_handoff',
+  'model_call',
+  'tool_call',
+  'mcp_call',
+  'custom',
+]);
+
+export const AuditEventIngestSchema = z.object({
+  tenantId: TenantIdSchema,
+  projectId: ProjectIdSchema,
+  traceId: TraceIdSchema,
+  agentId: AgentIdSchema,
+  sequenceNo: z.number().int().nonnegative(),
+  kind: AuditEventKindSchema,
+  actorId: z.string().max(128).optional(),
+  name: z.string().max(256).optional(),
+  input: z.record(z.unknown()).optional(),
+  output: z.record(z.unknown()).optional(),
+  latencyMs: z.number().int().nonnegative().optional(),
+  success: z.boolean().optional(),
+  error: z
+    .object({
+      type: z.string().max(128).optional(),
+      message: z.string().optional(),
+    })
+    .optional(),
+  metadata: z.record(z.unknown()).default({}),
+  occurredAt: isoDateTime,
+});
+
 // CostEventSchema and FailureEventSchema are reserved for a future direct-ingest
 // endpoint. They are not consumed by any service today — do not remove.
 export const CostEventSchema = z.object({
@@ -65,5 +98,5 @@ export const FailureEventSchema = z.object({
 
 export type ModelCallIngest = z.infer<typeof ModelCallIngestSchema>;
 export type ToolCallIngest = z.infer<typeof ToolCallIngestSchema>;
-export type CostEvent = z.infer<typeof CostEventSchema>;
-export type FailureEvent = z.infer<typeof FailureEventSchema>;
+export type AuditEventIngest = z.infer<typeof AuditEventIngestSchema>;
+export type AuditEventKind = z.infer<typeof AuditEventKindSchema>;
