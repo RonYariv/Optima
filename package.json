@@ -1,0 +1,23 @@
+{
+  "name": "agent-optima",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Agent-Optima monorepo",
+  "workspaces": [
+    "apps/*",
+    "packages/*",
+    "services/*"
+  ],
+  "scripts": {
+    "build": "npm run -ws build",
+    "lint": "npm run -ws lint",
+    "typecheck": "npm run -ws typecheck",
+    "test": "npm run -ws test"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.3"
+  }
+}
