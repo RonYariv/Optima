@@ -82,7 +82,7 @@ export interface AuditEvent {
   createdAt: string
 }
 
-// React Flow graph shapes returned by /v1/traces/:id/graph
+// React Flow graph shapes returned by /v1/traces/:id
 // Must extend Record<string,unknown> to satisfy @xyflow/react Node constraint
 export interface RFNodeData extends Record<string, unknown> {
   label: string
@@ -95,16 +95,6 @@ export interface RFNodeData extends Record<string, unknown> {
   toolName?: string
   success?: boolean
   errorType?: string
-}
-
-export interface TraceGraph {
-  nodes: Array<{
-    id: string
-    type: 'agent' | 'model_call' | 'tool_call'
-    position: { x: number; y: number }
-    data: RFNodeData
-  }>
-  edges: Array<{ id: string; source: string; target: string }>
 }
 
 export interface RFNode {

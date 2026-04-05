@@ -53,7 +53,7 @@ export class ModelCallWorker {
     });
 
     // 4. Insert model call (idempotent: onConflictDoNothing on id=stepId)
-    await this.modelCallRepo.insert({
+    const inserted = await this.modelCallRepo.insert({
       id: data.stepId,
       traceId: data.traceId,
       stepId: data.stepId,
@@ -68,11 +68,13 @@ export class ModelCallWorker {
       createdAt: now,
     });
 
-    // 5. Update denormalised trace totals for O(1) trace list reads (PERF-5)
-    await this.traceRepo.incrementCost(
-      data.traceId,
-      costUsd.toFixed(8),
-      data.inputTokens + data.outputTokens,
-    );
+    // 5. Only update denormalised totals if this was a new insert (prevents double-counting on replay)
+    if (inserted) {
+      await this.traceRepo.incrementCost(
+        data.traceId,
+        costUsd.toFixed(8),
+        data.inputTokens + data.outputTokens,
+      );
+    }
   }
 }

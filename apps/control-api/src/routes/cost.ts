@@ -5,6 +5,20 @@ import { modelCalls, traceSteps } from '@agent-optima/db';
 import { PaginationSchema } from '../lib/pagination.js';
 import { z } from 'zod';
 
+function scopedProjectIds(request: { auth: { projectIds: string[] } }, requestedProjectId?: string): string[] {
+  const allowed = request.auth.projectIds;
+  if (allowed.length === 0) {
+    throw new Error('Token has no project scope');
+  }
+  if (requestedProjectId) {
+    if (!allowed.includes(requestedProjectId)) {
+      throw new Error('Forbidden project');
+    }
+    return [requestedProjectId];
+  }
+  return allowed;
+}
+
 const QuerySchema = PaginationSchema.extend({
   projectId: z.string().optional(),
   groupBy: z.enum(['day', 'model', 'agent']).default('day'),
@@ -19,19 +33,21 @@ export function buildCostRoutes(db: DbClient) {
       if (!q.success) {
         return reply.code(422).send({ error: 'InvalidQuery', issues: q.error.issues });
       }
-      const { from, to, groupBy } = q.data;
+      const { projectId, from, to, groupBy } = q.data;
+      const projectIds = scopedProjectIds(request, projectId);
 
-      const conditions = [];
+      const conditions = [or(...projectIds.map((pid) => eq(traces.projectId, pid)))!];
       if (from) conditions.push(gte(modelCalls.createdAt, new Date(from)));
       if (to) conditions.push(lte(modelCalls.createdAt, new Date(to)));
 
-      // Build both queries then run concurrently (PERF-1: eliminates one sequential round-trip)
+      // Build both queries then run concurrently (eliminates one sequential round-trip)
       const totalsQuery = db
         .select({
           totalCostUsd: sum(modelCalls.costUsd),
           totalTokens: sum(sql<number>`${modelCalls.inputTokens} + ${modelCalls.outputTokens}`),
         })
         .from(modelCalls)
+        .innerJoin(traces, eq(modelCalls.traceId, traces.id))
         .where(and(...conditions));
 
       const breakdownQuery = groupBy === 'model'
@@ -43,6 +59,7 @@ export function buildCostRoutes(db: DbClient) {
               callCount: sql<number>`count(*)`,
             })
             .from(modelCalls)
+            .innerJoin(traces, eq(modelCalls.traceId, traces.id))
             .where(and(...conditions))
             .groupBy(modelCalls.modelName)
             .orderBy(sql`sum(${modelCalls.costUsd}) desc`)
@@ -55,6 +72,7 @@ export function buildCostRoutes(db: DbClient) {
               callCount: sql<number>`count(*)`,
             })
             .from(modelCalls)
+            .innerJoin(traces, eq(modelCalls.traceId, traces.id))
             .innerJoin(traceSteps, eq(modelCalls.stepId, traceSteps.id))
             .where(and(...conditions))
             .groupBy(traceSteps.agentId)
@@ -67,6 +85,7 @@ export function buildCostRoutes(db: DbClient) {
               callCount: sql<number>`count(*)`,
             })
             .from(modelCalls)
+            .innerJoin(traces, eq(modelCalls.traceId, traces.id))
             .where(and(...conditions))
             .groupBy(sql`date_trunc('day', ${modelCalls.createdAt})`)
             .orderBy(sql`date_trunc('day', ${modelCalls.createdAt})`);

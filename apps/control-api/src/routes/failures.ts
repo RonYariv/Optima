@@ -6,6 +6,14 @@ import { decodeCursor } from '../lib/cursor.js';
 import { PaginationSchema, buildPage } from '../lib/pagination.js';
 import { z } from 'zod';
 
+function scopedProjectIds(request: { auth: { projectIds: string[] } }): string[] {
+  const allowed = request.auth.projectIds;
+  if (allowed.length === 0) {
+    throw new Error('Token has no project scope');
+  }
+  return allowed;
+}
+
 const QuerySchema = PaginationSchema.extend({
   severity: z.enum(['low', 'medium', 'high', 'critical']).optional(),
   category: z.enum(['tool_error', 'provider_error', 'logic_break', 'handoff_error', 'unknown']).optional(),
@@ -21,10 +29,13 @@ export function buildFailureRoutes(db: DbClient) {
         return reply.code(422).send({ error: 'InvalidQuery', issues: q.error.issues });
       }
       const { severity, category, from, to, limit, cursor } = q.data;
+      const projectIds = scopedProjectIds(request);
 
       const cursorData = cursor ? decodeCursor(cursor) : null;
 
-      const conditions = [];
+      const conditions = [
+        or(...projectIds.map((pid) => eq(traces.projectId, pid)))!,
+      ];
       if (severity) conditions.push(eq(failureEvents.severity, severity));
       if (category) conditions.push(eq(failureEvents.category, category));
       if (from) conditions.push(gte(failureEvents.createdAt, new Date(from)));
@@ -44,9 +55,11 @@ export function buildFailureRoutes(db: DbClient) {
       const rows = await db
         .select()
         .from(failureEvents)
+        .innerJoin(traces, eq(failureEvents.traceId, traces.id))
         .where(and(...conditions))
         .orderBy(desc(failureEvents.createdAt), desc(failureEvents.id))
-        .limit(limit + 1);
+        .limit(limit + 1)
+        .then((rs) => rs.map((r) => r.failure_events));
 
       return reply.send(buildPage(rows, limit));
     });

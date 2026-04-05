@@ -1,2 +1,6 @@
 optima-sdk @ file://../../../packages/sdk-python
 python-dotenv>=1.0.0
+agent-framework>=1.0.0
+fastapi>=0.115.0
+uvicorn[standard]>=0.30.0
+httpx>=0.27.0

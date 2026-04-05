@@ -1,23 +1,17 @@
-import { eq, asc } from 'drizzle-orm';
 import type { DbClient } from '../client.js';
 import { auditEvents } from '../schema/index.js';
-import type { NewAuditEvent, AuditEvent } from '../schema/index.js';
+import type { NewAuditEvent } from '../schema/index.js';
 
 export class AuditEventRepository {
   constructor(private readonly db: DbClient) {}
 
-  async insert(data: NewAuditEvent): Promise<void> {
-    await this.db
+  async insert(data: NewAuditEvent): Promise<boolean> {
+    const rows = await this.db
       .insert(auditEvents)
       .values(data)
-      .onConflictDoNothing({ target: auditEvents.id });
-  }
+      .onConflictDoNothing({ target: auditEvents.id })
+      .returning({ id: auditEvents.id });
 
-  async findByTrace(traceId: string): Promise<AuditEvent[]> {
-    return this.db
-      .select()
-      .from(auditEvents)
-      .where(eq(auditEvents.traceId, traceId))
-      .orderBy(asc(auditEvents.sequenceNo));
+    return rows.length > 0;
   }
 }

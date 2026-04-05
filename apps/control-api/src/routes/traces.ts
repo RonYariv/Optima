@@ -20,6 +20,20 @@ import { PaginationSchema, buildPage } from '../lib/pagination.js';
 import { buildTraceGraph, type StepWithDetails, type TraceWithSteps } from '../lib/build-trace-graph.js';
 import { z } from 'zod';
 
+function scopedProjectIds(request: { auth: { projectIds: string[] } }, requestedProjectId?: string): string[] {
+  const allowed = request.auth.projectIds;
+  if (allowed.length === 0) {
+    throw new Error('Token has no project scope');
+  }
+  if (requestedProjectId) {
+    if (!allowed.includes(requestedProjectId)) {
+      throw new Error('Forbidden project');
+    }
+    return [requestedProjectId];
+  }
+  return allowed;
+}
+
 const QuerySchema = PaginationSchema.extend({
   projectId: z.string().optional(),
   status: z.enum(['running', 'success', 'failed', 'partial']).optional(),
@@ -97,10 +111,10 @@ export function buildTraceRoutes(db: DbClient) {
       }
       const { projectId, status, from, to, limit, cursor } = q.data;
 
+      const projectIds = scopedProjectIds(request, projectId);
       const cursorData = cursor ? decodeCursor(cursor) : null;
 
-      const conditions = [];
-      if (projectId) conditions.push(eq(traces.projectId, projectId));
+      const conditions = [or(...projectIds.map((pid) => eq(traces.projectId, pid)))!];
       if (status) conditions.push(eq(traces.status, status));
       if (from) conditions.push(gte(traces.createdAt, new Date(from)));
       if (to) conditions.push(lte(traces.createdAt, new Date(to)));
@@ -144,18 +158,13 @@ export function buildTraceRoutes(db: DbClient) {
         totalCostUsd: raw.totalCostUsd != null ? Number(raw.totalCostUsd) : null,
         totalTokens:  raw.totalTokens  != null ? Number(raw.totalTokens)  : null,
       };
-      return reply.send(trace);
+      return reply.send({
+        ...trace,
+        graph: buildTraceGraph(raw),
+      });
     });
 
-    // GET /v1/traces/:traceId/graph  — React Flow compatible
-    app.get<{ Params: { traceId: string } }>('/v1/traces/:traceId/graph', async (request, reply) => {
-      const p = TraceIdParamSchema.safeParse(request.params);
-      if (!p.success) return reply.code(400).send({ error: 'InvalidParam' });
-      const { traceId } = p.data;
-      const trace = await fetchTraceWithSteps(db, traceId);
-      if (!trace) return reply.code(404).send({ error: 'NotFound' });
-      return reply.send(buildTraceGraph(trace));
-    });
+
 
     // GET /v1/traces/:traceId/audit-log
     app.get<{ Params: { traceId: string } }>('/v1/traces/:traceId/audit-log', async (request, reply) => {

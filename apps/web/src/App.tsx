@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, lazy, Suspense } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import Layout from './components/Layout'
 import TokenGate from './components/TokenGate'
@@ -8,12 +8,10 @@ import FailuresPage from './pages/FailuresPage'
 import CostPage from './pages/CostPage'
 import { tokenStore } from './lib/token-store'
 
+const SandboxPage = import.meta.env.DEV ? lazy(() => import('./pages/SandboxPage')) : null
+
 export default function App() {
-  const [hasToken, setHasToken] = useState(() => {
-    const devJwt = import.meta.env.VITE_DEV_JWT as string | undefined
-    if (devJwt && !tokenStore.get()) tokenStore.set(devJwt)
-    return !!tokenStore.get()
-  })
+  const [hasToken, setHasToken] = useState(() => !!tokenStore.get())
 
   if (!hasToken) return <TokenGate onSave={() => setHasToken(true)} />
 
@@ -25,6 +23,16 @@ export default function App() {
         <Route path="traces/:traceId" element={<TraceDetailPage />} />
         <Route path="failures" element={<FailuresPage />} />
         <Route path="cost" element={<CostPage />} />
+        {SandboxPage && (
+          <Route
+            path="sandbox"
+            element={
+              <Suspense fallback={null}>
+                <SandboxPage />
+              </Suspense>
+            }
+          />
+        )}
       </Route>
     </Routes>
   )

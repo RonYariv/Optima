@@ -166,12 +166,6 @@ export default function TraceDetailPage() {
     enabled: !!traceId,
   })
 
-  const graphQuery = useQuery({
-    queryKey: ['trace-graph', traceId],
-    queryFn: () => api.traces.graph(traceId!),
-    enabled: !!traceId && tab === 'graph',
-  })
-
   const auditLogQuery = useQuery({
     queryKey: ['trace-audit-log', traceId],
     queryFn: () => api.traces.auditLog(traceId!),
@@ -197,6 +191,11 @@ export default function TraceDetailPage() {
   }
 
   const trace = traceQuery.data
+  const graphQuery = {
+    data: trace?.graph ?? { nodes: [], edges: [] },
+    isLoading: false,
+    isError: false,
+  }
 
   const tabClass = (t: Tab) =>
     `px-3 py-1.5 text-sm rounded transition-colors ${
@@ -252,15 +251,7 @@ export default function TraceDetailPage() {
             className="flex-1 rounded-lg border overflow-hidden"
             style={{ height: 520, borderColor: 'var(--color-border)' }}
           >
-            {graphQuery.isLoading ? (
-              <div className="flex items-center justify-center h-full" style={{ color: 'var(--color-muted)' }}>
-                Loading graph…
-              </div>
-            ) : graphQuery.isError ? (
-              <div className="flex items-center justify-center h-full text-red-400 text-sm">
-                Failed to load graph data
-              </div>
-            ) : !graphQuery.data?.nodes?.length ? (
+            {!graphQuery.data?.nodes?.length ? (
               <div className="flex items-center justify-center h-full" style={{ color: 'var(--color-muted)' }}>
                 No graph data available
               </div>

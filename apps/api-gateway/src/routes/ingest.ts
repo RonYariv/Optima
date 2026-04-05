@@ -7,10 +7,9 @@ import {
   type ToolCallIngest,
   type AuditEventIngest,
 } from '@agent-optima/schemas';
-import type { IProviderAdapter } from '../providers/index.js';
 
 /**
- * Structural interface for any Zod-like schema (CODE-2).
+ * Structural interface for any Zod-like schema.
  * Using a structural type instead of ZodType<T> avoids the input/output
  * generic split that causes TypeScript errors with .default() fields.
  */
@@ -19,7 +18,7 @@ interface SafeParser<T> {
 }
 
 /**
- * Validate body with schema (CODE-2).
+ * Validate body with schema.
  * Sends 422 and returns null on failure so the caller can early-return.
  */
 function parseBody<T>(
@@ -44,14 +43,13 @@ function parseBody<T>(
  *
  * Flow:
  *  1. Validate payload (Zod)
- *  2. Forward LLM call to provider adapter (zero blocking on analytics)
- *  3. Enqueue job for async processing by analytics-workers
- *  4. Respond immediately — the caller never waits for DB writes
+ *  2. Enqueue job for async processing by analytics-workers
+ *  3. Respond immediately (202 Accepted) — never block on writes or provider calls
  *
  * If the queue is unavailable (DATABASE_URL not set / mock mode),
  * events are emitted as structured pino logs only — no data loss for dev.
  */
-export function buildIngestRoutes(adapter: IProviderAdapter) {
+export function buildIngestRoutes() {
   return async function ingestRoutes(app: FastifyInstance): Promise<void> {
 
     app.post<{ Body: ModelCallIngest }>(
@@ -60,45 +58,25 @@ export function buildIngestRoutes(adapter: IProviderAdapter) {
         const data = parseBody(ModelCallIngestSchema, request.body, reply);
         if (!data) return;
 
-        // Forward to provider
-        let providerResponse;
+        // Fire-and-forget enqueue — never block the response
         try {
-          providerResponse = await adapter.call({
-            modelProvider: data.modelProvider,
-            modelName: data.modelName,
-            payload: { messages: [] },
-            maxTokens: 1024,
+          if (app.queues) {
+            await app.queues.modelCall.enqueue(data);
+          } else {
+            request.log.info({ event: 'model_call_ingested', ...data }, 'model_call_ingested');
+          }
+        } catch (err: unknown) {
+          request.log.error({ err, traceId: data.traceId }, 'Failed to enqueue model-call');
+          return reply.code(503).send({
+            error: 'QueueUnavailable',
+            message: 'Telemetry ingest is temporarily unavailable',
           });
-        } catch (err) {
-          const msg = err instanceof Error ? err.message : 'provider error';
-          request.log.error({ err, traceId: data.traceId }, 'Provider call failed');
-          return reply.code(502).send({ error: 'ProviderError', message: msg });
         }
 
-        // Enrich payload with actual token counts from provider response
-        const enriched: ModelCallIngest = {
-          ...data,
-          inputTokens: providerResponse.inputTokens,
-          outputTokens: providerResponse.outputTokens,
-          latencyMs: providerResponse.latencyMs,
-        };
-
-        // Fire-and-forget enqueue — never block the response on this
-        if (app.queues) {
-          app.queues.modelCall.enqueue(enriched).catch((err: unknown) => {
-            request.log.error({ err, traceId: data.traceId }, 'Failed to enqueue model-call');
-          });
-        } else {
-          request.log.info({ event: 'model_call_ingested', ...enriched }, 'model_call_ingested');
-        }
-
-        return reply.code(200).send({
+        return reply.code(202).send({
           traceId: data.traceId,
           stepId: data.stepId,
-          inputTokens: providerResponse.inputTokens,
-          outputTokens: providerResponse.outputTokens,
-          latencyMs: providerResponse.latencyMs,
-          providerBody: providerResponse.body,
+          acknowledged: true,
         });
       },
     );
@@ -110,15 +88,21 @@ export function buildIngestRoutes(adapter: IProviderAdapter) {
         const data = parseBody(ToolCallIngestSchema, request.body, reply);
         if (!data) return;
 
-        if (app.queues) {
-          app.queues.toolCall.enqueue(data).catch((err: unknown) => {
-            request.log.error({ err, traceId: data.traceId }, 'Failed to enqueue tool-call');
+        try {
+          if (app.queues) {
+            await app.queues.toolCall.enqueue(data);
+          } else {
+            request.log.info({ event: 'tool_call_ingested', ...data }, 'tool_call_ingested');
+          }
+        } catch (err: unknown) {
+          request.log.error({ err, traceId: data.traceId }, 'Failed to enqueue tool-call');
+          return reply.code(503).send({
+            error: 'QueueUnavailable',
+            message: 'Telemetry ingest is temporarily unavailable',
           });
-        } else {
-          request.log.info({ event: 'tool_call_ingested', ...data }, 'tool_call_ingested');
         }
 
-        return reply.code(200).send({
+        return reply.code(202).send({
           traceId: data.traceId,
           stepId: data.stepId,
           acknowledged: true,
@@ -133,15 +117,21 @@ export function buildIngestRoutes(adapter: IProviderAdapter) {
         const data = parseBody(AuditEventIngestSchema, request.body, reply);
         if (!data) return;
 
-        if (app.queues) {
-          app.queues.auditEvent.enqueue(data).catch((err: unknown) => {
-            request.log.error({ err, traceId: data.traceId }, 'Failed to enqueue audit-event');
+        try {
+          if (app.queues) {
+            await app.queues.auditEvent.enqueue(data);
+          } else {
+            request.log.info({ event: 'audit_event_ingested', ...data }, 'audit_event_ingested');
+          }
+        } catch (err: unknown) {
+          request.log.error({ err, traceId: data.traceId }, 'Failed to enqueue audit-event');
+          return reply.code(503).send({
+            error: 'QueueUnavailable',
+            message: 'Telemetry ingest is temporarily unavailable',
           });
-        } else {
-          request.log.info({ event: 'audit_event_ingested', ...data }, 'audit_event_ingested');
         }
 
-        return reply.code(200).send({
+        return reply.code(202).send({
           traceId: data.traceId,
           sequenceNo: data.sequenceNo,
           acknowledged: true,

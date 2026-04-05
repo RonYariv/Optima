@@ -16,6 +16,10 @@ Each section is self-contained: paste the **Session Prompt** directly into a new
 | 5 | Web MVP dashboard | ⬜ Pending | — |
 | 6 | Quality + ops baseline | ⬜ Pending | — |
 
+### Product TODO (Post-Phase 1)
+
+- [ ] Add native Microsoft Agent Framework runtime event bridge so Optima ingests framework lifecycle/tool/model events automatically (no manual adapter-side event emits).
+
 ---
 
 ## Task 1 — Workspace Foundation ✅ Done

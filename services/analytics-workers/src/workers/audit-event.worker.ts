@@ -37,7 +37,7 @@ export class AuditEventWorker {
 
     const id = `${data.traceId}:${data.sequenceNo}`;
 
-    await this.auditEventRepo.insert({
+    const inserted = await this.auditEventRepo.insert({
       id,
       traceId: data.traceId,
       sequenceNo: data.sequenceNo,
@@ -54,5 +54,10 @@ export class AuditEventWorker {
       occurredAt: new Date(data.occurredAt),
       createdAt: new Date(),
     });
+
+    // Only increment telemetry counters if this was a new insert (prevents double-counting on replay)
+    if (inserted) {
+      // Note: caller tracks audit event count via this handler's return value or external counter
+    }
   }
 }

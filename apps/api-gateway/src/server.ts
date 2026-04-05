@@ -7,8 +7,6 @@ import { authPlugin } from '@agent-optima/fastify-auth';
 import { queuePlugin } from './plugins/queue.js';
 import { healthRoutes } from './routes/health.js';
 import { buildIngestRoutes } from './routes/ingest.js';
-import { MockAdapter, OpenAIAdapter } from './providers/index.js';
-import type { IProviderAdapter } from './providers/index.js';
 
 export async function createServer() {
   const app = Fastify({
@@ -52,18 +50,9 @@ export async function createServer() {
   });
   await app.register(queuePlugin);
 
-  // ── Provider adapter ─────────────────────────────────────────────────────
-  let adapter: IProviderAdapter;
-  if (config.PROVIDER_ADAPTER === 'openai') {
-    adapter = new OpenAIAdapter(config);
-  } else {
-    adapter = new MockAdapter();
-  }
-  app.log.info(`Using provider adapter: ${adapter.name}`);
-
   // ── Routes ────────────────────────────────────────────────────────────────
   await app.register(healthRoutes);
-  await app.register(buildIngestRoutes(adapter));
+  await app.register(buildIngestRoutes());
 
   // ── Global error handler ──────────────────────────────────────────────────
   app.setErrorHandler((error: Error & { statusCode?: number }, request, reply) => {

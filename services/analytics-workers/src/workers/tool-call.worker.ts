@@ -44,7 +44,7 @@ export class ToolCallWorker {
     });
 
     // 3. Insert tool call (idempotent)
-    await this.toolCallRepo.insert({
+    const inserted = await this.toolCallRepo.insert({
       id: data.stepId,
       traceId: data.traceId,
       stepId: data.stepId,
@@ -57,8 +57,8 @@ export class ToolCallWorker {
       createdAt: now,
     });
 
-    // 4. Auto-generate failure event on tool error
-    if (!data.success) {
+    // 4. Auto-generate failure event on tool error (only if this was a new insert to avoid duplicates on replay)
+    if (inserted && !data.success) {
       const rootCause = classifyRootCause(data.errorType, data.toolName);
       await this.failureRepo.insert({
         id: `${data.stepId}:failure`,

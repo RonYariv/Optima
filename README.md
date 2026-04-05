@@ -35,7 +35,11 @@ Services come up at:
 node --input-type=module <<'EOF'
 import { SignJWT } from 'jose';
 const key = new TextEncoder().encode(process.env.JWT_SECRET);
-const token = await new SignJWT({ sub: 'myapp', tenantId: 'myapp' })
+const token = await new SignJWT({ 
+  sub: 'my-agent',
+  role: 'writer',
+  projects: ['my-project'] // scoped to these project IDs
+})
   .setProtectedHeader({ alg: 'HS256' })
   .setIssuer('agent-optima')
   .setAudience('agent-optima-api')
@@ -58,18 +62,21 @@ npm install
 import { OptimaClient } from '@agent-optima/sdk-node';
 
 const optima = new OptimaClient({
-  url: process.env.OPTIMA_URL,    // http://optima-gateway:3000
-  token: process.env.OPTIMA_TOKEN,
+  url: process.env.OPTIMA_URL,      // http://optima-gateway:3000
+  token: process.env.OPTIMA_TOKEN,   // Bearer token with projects scope
 });
 
 const t0 = Date.now();
 const res = await openai.chat.completions.create({ model: 'gpt-4o', messages });
 
 await optima.ingest.modelCall({
-  tenantId: 'my-project', projectId: 'sales-agent',
-  traceId: ctx.traceId,   stepId: crypto.randomUUID(),
+  projectId: 'sales-agent',  // must match token scope
+  traceId: ctx.traceId,
+  stepId: crypto.randomUUID(),
   agentId: 'sales-agent-v2',
-  modelProvider: 'openai', modelName: 'gpt-4o',
+  stepIndex: 0,
+  modelProvider: 'openai',
+  modelName: 'gpt-4o',
   inputTokens: res.usage.prompt_tokens,
   outputTokens: res.usage.completion_tokens,
   latencyMs: Date.now() - t0,

@@ -22,7 +22,10 @@
     "noUnusedParameters": true,
     "erasableSyntaxOnly": true,
     "noFallthroughCasesInSwitch": true,
-    "noUncheckedSideEffectImports": true
+    "noUncheckedSideEffectImports": true,
+    "paths": {
+      "@agent-optima/agentic": ["../../packages/agentic/src/index.ts"]
+    }
   },
-  "include": ["src"]
+  "include": ["src", "../../packages/agentic/src"]
 }
