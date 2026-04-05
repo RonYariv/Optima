@@ -21,12 +21,16 @@ export function buildCostRoutes(db: DbClient) {
       }
       const { from, to, groupBy } = q.data;
 
+      if (groupBy === 'agent') {
+        return reply.code(422).send({ error: 'InvalidQuery', message: "groupBy='agent' is not yet implemented" });
+      }
+
       const conditions = [eq(modelCalls.tenantId, request.tenantId)];
       if (from) conditions.push(gte(modelCalls.createdAt, new Date(from)));
       if (to) conditions.push(lte(modelCalls.createdAt, new Date(to)));
 
-      // Total cost
-      const [totals] = await db
+      // Build both queries then run concurrently (PERF-1: eliminates one sequential round-trip)
+      const totalsQuery = db
         .select({
           totalCostUsd: sum(modelCalls.costUsd),
           totalTokens: sum(sql<number>`${modelCalls.inputTokens} + ${modelCalls.outputTokens}`),
@@ -34,51 +38,38 @@ export function buildCostRoutes(db: DbClient) {
         .from(modelCalls)
         .where(and(...conditions));
 
-      // Breakdown by dimension
-      let breakdown: { key: string; costUsd: number; tokenCount: number; callCount: number }[] = [];
+      const breakdownQuery = groupBy === 'model'
+        ? db
+            .select({
+              key: modelCalls.modelName,
+              costUsd: sum(modelCalls.costUsd),
+              tokenCount: sum(sql<number>`${modelCalls.inputTokens} + ${modelCalls.outputTokens}`),
+              callCount: sql<number>`count(*)`,
+            })
+            .from(modelCalls)
+            .where(and(...conditions))
+            .groupBy(modelCalls.modelName)
+            .orderBy(sql`sum(${modelCalls.costUsd}) desc`)
+        : db
+            .select({
+              key: sql<string>`date_trunc('day', ${modelCalls.createdAt})::text`,
+              costUsd: sum(modelCalls.costUsd),
+              tokenCount: sum(sql<number>`${modelCalls.inputTokens} + ${modelCalls.outputTokens}`),
+              callCount: sql<number>`count(*)`,
+            })
+            .from(modelCalls)
+            .where(and(...conditions))
+            .groupBy(sql`date_trunc('day', ${modelCalls.createdAt})`)
+            .orderBy(sql`date_trunc('day', ${modelCalls.createdAt})`);
 
-      if (groupBy === 'model') {
-        const rows = await db
-          .select({
-            key: modelCalls.modelName,
-            costUsd: sum(modelCalls.costUsd),
-            tokenCount: sum(sql<number>`${modelCalls.inputTokens} + ${modelCalls.outputTokens}`),
-            callCount: sql<number>`count(*)`,
-          })
-          .from(modelCalls)
-          .where(and(...conditions))
-          .groupBy(modelCalls.modelName)
-          .orderBy(sql`sum(${modelCalls.costUsd}) desc`);
+      const [[totals], rows] = await Promise.all([totalsQuery, breakdownQuery]);
 
-        breakdown = rows.map((r) => ({
-          key: r.key,
-          costUsd: Number(r.costUsd ?? 0),
-          tokenCount: Number(r.tokenCount ?? 0),
-          callCount: Number(r.callCount ?? 0),
-        }));
-      } else if (groupBy === 'day') {
-        const rows = await db
-          .select({
-            key: sql<string>`date_trunc('day', ${modelCalls.createdAt})::text`,
-            costUsd: sum(modelCalls.costUsd),
-            tokenCount: sum(sql<number>`${modelCalls.inputTokens} + ${modelCalls.outputTokens}`),
-            callCount: sql<number>`count(*)`,
-          })
-          .from(modelCalls)
-          .where(and(...conditions))
-          .groupBy(sql`date_trunc('day', ${modelCalls.createdAt})`)
-          .orderBy(sql`date_trunc('day', ${modelCalls.createdAt})`);
-
-        breakdown = rows.map((r) => ({
-          key: r.key,
-          costUsd: Number(r.costUsd ?? 0),
-          tokenCount: Number(r.tokenCount ?? 0),
-          callCount: Number(r.callCount ?? 0),
-        }));
-      } else {
-        // groupBy === 'agent' — not yet implemented
-        return reply.code(422).send({ error: 'InvalidQuery', message: "groupBy='agent' is not yet implemented" });
-      }
+      const breakdown = rows.map((r) => ({
+        key: r.key,
+        costUsd: Number(r.costUsd ?? 0),
+        tokenCount: Number(r.tokenCount ?? 0),
+        callCount: Number(r.callCount ?? 0),
+      }));
 
       return reply.send({
         totalCostUsd: Number(totals?.totalCostUsd ?? 0),

@@ -3,32 +3,20 @@ import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { api } from '../lib/api'
 import StatusBadge from '../components/StatusBadge'
+import PaginationFooter from '../components/PaginationFooter'
+import { usePagination } from '../lib/use-pagination'
 import type { TraceStatus } from '../types'
 
 const STATUSES: TraceStatus[] = ['running', 'success', 'failed', 'partial']
 
 export default function TracesPage() {
   const [status, setStatus] = useState<TraceStatus | ''>('')
-  const [cursor, setCursor] = useState<string | undefined>()
-  const [history, setHistory] = useState<string[]>([])
+  const { cursor, history, nextPage, prevPage, reset } = usePagination()
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ['traces', status, cursor],
     queryFn: () => api.traces.list({ status: status || undefined, cursor }),
   })
-
-  function nextPage() {
-    if (data?.nextCursor) {
-      setHistory((h) => [...h, cursor ?? ''])
-      setCursor(data.nextCursor)
-    }
-  }
-
-  function prevPage() {
-    const prev = history[history.length - 1]
-    setHistory((h) => h.slice(0, -1))
-    setCursor(prev === '' ? undefined : prev)
-  }
 
   return (
     <div>
@@ -44,8 +32,7 @@ export default function TracesPage() {
           value={status}
           onChange={(e) => {
             setStatus(e.target.value as TraceStatus | '')
-            setCursor(undefined)
-            setHistory([])
+            reset()
           }}
         >
           <option value="">All statuses</option>
@@ -116,24 +103,12 @@ export default function TracesPage() {
         </table>
       </div>
 
-      <div className="flex gap-2 mt-4 justify-end">
-        <button
-          className="px-3 py-1.5 text-sm rounded border disabled:opacity-40"
-          style={{ borderColor: 'var(--color-border)', color: 'var(--color-text)', backgroundColor: 'var(--color-surface)' }}
-          onClick={prevPage}
-          disabled={history.length === 0}
-        >
-          ← Prev
-        </button>
-        <button
-          className="px-3 py-1.5 text-sm rounded border disabled:opacity-40"
-          style={{ borderColor: 'var(--color-border)', color: 'var(--color-text)', backgroundColor: 'var(--color-surface)' }}
-          onClick={nextPage}
-          disabled={!data?.nextCursor}
-        >
-          Next →
-        </button>
-      </div>
+      <PaginationFooter
+        hasPrev={history.length > 0}
+        hasNext={!!data?.nextCursor}
+        onPrev={prevPage}
+        onNext={() => nextPage(data?.nextCursor)}
+      />
     </div>
   )
 }

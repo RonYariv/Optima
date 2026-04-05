@@ -18,7 +18,11 @@ const ConfigSchema = z.object({
   JWT_ISSUER: z.string().default('agent-optima'),
   JWT_AUDIENCE: z.string().default('agent-optima-api'),
 
-  CORS_ORIGIN: z.string().default('http://localhost:5173'),
+  CORS_ORIGIN: z
+    .string()
+    .url()
+    .refine((v) => !v.endsWith('/'), { message: 'CORS_ORIGIN must not have a trailing slash' })
+    .default('http://localhost:5173'),
 
   RATE_LIMIT_MAX: z.coerce.number().int().positive().default(300),
   RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(60_000),

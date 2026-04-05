@@ -8,12 +8,12 @@ import { createDbClient } from './client.js';
  * Safe to call on every process startup — drizzle tracks applied migrations
  * in the __drizzle_migrations table.
  */
-export async function runMigrations(connectionString: string): Promise<void> {
+export async function runMigrations(connectionString: string, sslDisabled = false): Promise<void> {
   const migrationsFolder = resolve(
     dirname(fileURLToPath(import.meta.url)),
     '../migrations',
   );
 
-  const db = createDbClient(connectionString);
+  const db = createDbClient(connectionString, sslDisabled);
   await migrate(db, { migrationsFolder });
 }

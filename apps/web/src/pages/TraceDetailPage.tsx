@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import {
@@ -183,8 +183,15 @@ export default function TraceDetailPage() {
   const initialNodes = (graphQuery.data?.nodes ?? []) as AppNode[]
   const initialEdges = (graphQuery.data?.edges ?? []) as Edge[]
 
-  const [nodes, , onNodesChange] = useNodesState<AppNode>(initialNodes)
-  const [edges, , onEdgesChange] = useEdgesState<Edge>(initialEdges)
+  const [nodes, setNodes, onNodesChange] = useNodesState<AppNode>(initialNodes)
+  const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>(initialEdges)
+
+  // Sync React Flow state when graph query data refreshes (PERF-3)
+  useEffect(() => {
+    setNodes((graphQuery.data?.nodes ?? []) as AppNode[])
+    setEdges((graphQuery.data?.edges ?? []) as Edge[])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [graphQuery.data])
 
   const onNodeClick = useCallback<NodeMouseHandler<AppNode>>((_evt, node) => {
     setSelectedNode(node)

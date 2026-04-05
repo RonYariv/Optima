@@ -22,7 +22,17 @@ export async function buildServer() {
   });
 
   // Security
-  await app.register(helmet, { contentSecurityPolicy: false });
+  await app.register(helmet, {
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc:  ["'self'"],
+        styleSrc:   ["'self'", "'unsafe-inline'"],
+        imgSrc:     ["'self'", 'data:'],
+        connectSrc: ["'self'"],
+      },
+    },
+  });
   await app.register(rateLimit, { max: config.RATE_LIMIT_MAX, timeWindow: config.RATE_LIMIT_WINDOW_MS });
   await app.register(cors, {
     origin: config.CORS_ORIGIN,
@@ -38,7 +48,7 @@ export async function buildServer() {
   });
 
   // DB client — scoped to this server
-  const db = createDbClient(config.DATABASE_URL);
+  const db = createDbClient(config.DATABASE_URL, config.DATABASE_SSL === 'disable');
 
   // Routes
   await app.register(healthRoutes);

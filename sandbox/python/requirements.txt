@@ -1,0 +1,2 @@
+optima-sdk @ file://../../../packages/sdk-python
+python-dotenv>=1.0.0

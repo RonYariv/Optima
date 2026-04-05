@@ -11,8 +11,8 @@ export type DbClient = ReturnType<typeof createDbClient>;
  * replace the `postgres` import and the `drizzle()` call here.
  * Nothing outside this file needs to change.
  */
-export function createDbClient(connectionString: string) {
-  const sslMode = process.env['DATABASE_SSL'] === 'disable'
+export function createDbClient(connectionString: string, sslDisabled = false) {
+  const sslMode = sslDisabled
     ? false
     : connectionString.includes('localhost') ? false : 'require';
 

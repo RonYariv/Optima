@@ -15,8 +15,9 @@ import {
   type FailureEvent,
   type AuditEvent,
 } from '@agent-optima/db';
-import { encodeCursor, decodeCursor } from '../lib/cursor.js';
-import { PaginationSchema } from '../lib/pagination.js';
+import { decodeCursor } from '../lib/cursor.js';
+import { PaginationSchema, buildPage } from '../lib/pagination.js';
+import { buildTraceGraph, type StepWithDetails, type TraceWithSteps } from '../lib/build-trace-graph.js';
 import { z } from 'zod';
 
 const QuerySchema = PaginationSchema.extend({
@@ -26,27 +27,11 @@ const QuerySchema = PaginationSchema.extend({
 
 const TraceIdParamSchema = z.object({ traceId: z.string().min(1).max(128) });
 
-type StepWithDetails = TraceStep & {
-  modelCalls: ModelCall[];
-  toolCalls: ToolCall[];
-  failureEvents: FailureEvent[];
-};
-
-type RFNode = {
-  id: string;
-  type: 'agent' | 'model_call' | 'tool_call';
-  position: { x: number; y: number };
-  data: Record<string, unknown>;
-};
-type RFEdge = { id: string; source: string; target: string };
-
-const GRAPH_STEP_HEIGHT_PX = 120;
-
 async function fetchTraceWithSteps(
   db: DbClient,
   traceId: string,
   tenantId: string,
-): Promise<(Trace & { steps: StepWithDetails[] }) | null> {
+): Promise<TraceWithSteps | null> {
   // Fetch trace and steps concurrently — steps only need traceId (already known)
   const [[trace], steps] = await Promise.all([
     db
@@ -63,8 +48,8 @@ async function fetchTraceWithSteps(
 
   if (!trace) return null;
 
-  const stepIds = steps.map((s) => s.id);
-  if (stepIds.length === 0) return { ...trace, steps: [] };
+  // Early exit — no child rows to fetch
+  if (steps.length === 0) return { ...trace, steps: [] };
 
   const [mcs, tcs, fes] = await Promise.all([
     db.select().from(modelCalls).where(and(eq(modelCalls.traceId, traceId))),
@@ -140,15 +125,7 @@ export function buildTraceRoutes(db: DbClient) {
         .orderBy(desc(traces.createdAt), desc(traces.id))
         .limit(limit + 1);
 
-      const hasMore = rows.length > limit;
-      const data = hasMore ? rows.slice(0, limit) : rows;
-      const last = data.at(-1);
-      const nextCursor =
-        hasMore && last
-          ? encodeCursor({ createdAt: last.createdAt.toISOString(), id: last.id })
-          : null;
-
-      return reply.send({ data, nextCursor });
+      return reply.send(buildPage(rows, limit));
     });
 
     // GET /v1/traces/:traceId
@@ -168,61 +145,7 @@ export function buildTraceRoutes(db: DbClient) {
       const { traceId } = p.data;
       const trace = await fetchTraceWithSteps(db, traceId, request.tenantId);
       if (!trace) return reply.code(404).send({ error: 'NotFound' });
-
-      const nodes: RFNode[] = [];
-      const edges: RFEdge[] = [];
-
-      const rootId = `agent-${trace.agentId}`;
-      nodes.push({
-        id: rootId,
-        type: 'agent',
-        position: { x: 0, y: 0 },
-        data: { label: trace.agentId, status: trace.status },
-      });
-
-      trace.steps.forEach((step: StepWithDetails, i: number) => {
-        const failure = step.failureEvents[0] ?? null;
-        const stepStatus = failure ? 'failed' : 'success';
-        const yPos = (i + 1) * GRAPH_STEP_HEIGHT_PX;
-
-        if (step.type === 'model') {
-          const mc = step.modelCalls[0] ?? null;
-          nodes.push({
-            id: step.id,
-            type: 'model_call',
-            position: { x: 0, y: yPos },
-            data: {
-              label: mc?.modelName ?? step.agentId,
-              status: stepStatus,
-              latencyMs: mc?.latencyMs ?? null,
-              inputTokens: mc?.inputTokens ?? null,
-              outputTokens: mc?.outputTokens ?? null,
-              costUsd: mc?.costUsd ?? null,
-              failureReason: failure?.reason ?? null,
-            },
-          });
-        } else {
-          const tc = step.toolCalls[0] ?? null;
-          nodes.push({
-            id: step.id,
-            type: 'tool_call',
-            position: { x: 0, y: yPos },
-            data: {
-              label: tc?.toolName ?? step.agentId,
-              status: stepStatus,
-              latencyMs: tc?.latencyMs ?? null,
-              success: tc?.success ?? null,
-              errorType: tc?.errorType ?? null,
-              failureReason: failure?.reason ?? null,
-            },
-          });
-        }
-
-        const sourceId = i === 0 ? rootId : (trace.steps[i - 1] as StepWithDetails).id;
-        edges.push({ id: `e-${sourceId}-${step.id}`, source: sourceId, target: step.id });
-      });
-
-      return reply.send({ nodes, edges });
+      return reply.send(buildTraceGraph(trace));
     });
 
     // GET /v1/traces/:traceId/audit-log

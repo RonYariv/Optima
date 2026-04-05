@@ -38,7 +38,7 @@ export class ModelCallWorker {
       id: data.stepId,
       traceId: data.traceId,
       tenantId: data.tenantId,
-      stepIndex: 0, // TODO: add stepIndex field to ModelCallIngestSchema and propagate from SDK
+      stepIndex: data.stepIndex,
       agentId: data.agentId,
       type: 'model',
       startedAt: new Date(data.requestAt),
@@ -70,5 +70,12 @@ export class ModelCallWorker {
       respondedAt: new Date(data.responseAt),
       createdAt: now,
     });
+
+    // 5. Update denormalised trace totals for O(1) trace list reads (PERF-5)
+    await this.traceRepo.incrementCost(
+      data.traceId,
+      costUsd.toFixed(8),
+      data.inputTokens + data.outputTokens,
+    );
   }
 }

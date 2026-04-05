@@ -10,7 +10,7 @@ import {
   Tooltip,
 } from 'recharts'
 import { api } from '../lib/api'
-import type { CostGroupBy } from '../types'
+import type { CostGroupBy, CostSummaryResponse } from '../types'
 
 const GROUP_OPTIONS: { value: CostGroupBy; label: string }[] = [
   { value: 'day', label: 'By Day' },
@@ -21,18 +21,20 @@ const GROUP_OPTIONS: { value: CostGroupBy; label: string }[] = [
 export default function CostPage() {
   const [groupBy, setGroupBy] = useState<CostGroupBy>('day')
 
-  const { data, isLoading, isError } = useQuery({
+  const { data, isLoading, isError } = useQuery<CostSummaryResponse>({
     queryKey: ['cost-summary', groupBy],
     queryFn: () => api.cost.summary({ groupBy }),
   })
 
-  const chartData = (data ?? []).map((item) => ({
-    name: item.groupKey,
-    cost: parseFloat(item.totalCostUsd.toFixed(4)),
-    tokens: item.totalTokens ?? 0,
+  const breakdown = data?.breakdown ?? []
+
+  const chartData = breakdown.map((item) => ({
+    name: item.key,
+    cost: Math.round(item.costUsd * 10_000) / 10_000,
+    tokens: item.tokenCount,
   }))
 
-  const totalCost = (data ?? []).reduce((sum, i) => sum + i.totalCostUsd, 0)
+  const totalCost = data?.totalCostUsd ?? 0
 
   return (
     <div>
@@ -122,22 +124,22 @@ export default function CostPage() {
             </tr>
           </thead>
           <tbody>
-            {(data ?? []).map((item) => (
+            {breakdown.map((item) => (
               <tr
-                key={item.groupKey}
+                key={item.key}
                 className="border-t hover:bg-white/5 transition-colors"
                 style={{ borderColor: 'var(--color-border)' }}
               >
-                <td className="px-4 py-3 text-white">{item.groupKey}</td>
+                <td className="px-4 py-3 text-white">{item.key}</td>
                 <td className="px-4 py-3" style={{ color: 'var(--color-text)' }}>
-                  ${item.totalCostUsd.toFixed(4)}
+                  ${item.costUsd.toFixed(4)}
                 </td>
                 <td className="px-4 py-3" style={{ color: 'var(--color-muted)' }}>
-                  {item.totalTokens?.toLocaleString() ?? '—'}
+                  {item.tokenCount.toLocaleString()}
                 </td>
               </tr>
             ))}
-            {!isLoading && (data ?? []).length === 0 && (
+            {!isLoading && breakdown.length === 0 && (
               <tr>
                 <td colSpan={3} className="px-4 py-8 text-center" style={{ color: 'var(--color-muted)' }}>
                   No cost data available

@@ -33,6 +33,7 @@ export const modelCalls = pgTable(
   (t) => [
     index('model_calls_tenant_created_idx').on(t.tenantId, t.createdAt),
     index('model_calls_trace_id_idx').on(t.traceId),
+    index('model_calls_tenant_model_idx').on(t.tenantId, t.modelName),
   ],
 );
 

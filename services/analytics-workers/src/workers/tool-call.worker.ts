@@ -36,7 +36,7 @@ export class ToolCallWorker {
       id: data.stepId,
       traceId: data.traceId,
       tenantId: data.tenantId,
-      stepIndex: 0, // TODO: add stepIndex field to ToolCallIngestSchema and propagate from SDK
+      stepIndex: data.stepIndex,
       agentId: data.agentId,
       type: 'tool',
       startedAt: new Date(data.requestAt),

@@ -1,4 +1,4 @@
-import type { FastifyInstance } from 'fastify';
+import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import {
   ModelCallIngestSchema,
   ToolCallIngestSchema,
@@ -8,6 +8,41 @@ import {
   type AuditEventIngest,
 } from '@agent-optima/schemas';
 import type { IProviderAdapter } from '../providers/index.js';
+
+/**
+ * Structural interface for any Zod-like schema (CODE-2).
+ * Using a structural type instead of ZodType<T> avoids the input/output
+ * generic split that causes TypeScript errors with .default() fields.
+ */
+interface SafeParser<T> {
+  safeParse: (data: unknown) => { success: true; data: T } | { success: false; error: { issues: unknown[] } };
+}
+
+/**
+ * Validate body with schema and verify tenantId ownership (CODE-2).
+ * Sends 422/403 and returns null on failure so the caller can early-return.
+ */
+function parseAndAuthorize<T extends { tenantId: string }>(
+  schema: SafeParser<T>,
+  body: unknown,
+  request: FastifyRequest,
+  reply: FastifyReply,
+): T | null {
+  const parsed = schema.safeParse(body);
+  if (!parsed.success) {
+    reply.code(422).send({
+      error: 'UnprocessableEntity',
+      message: 'Invalid payload',
+      issues: parsed.error.issues,
+    });
+    return null;
+  }
+  if (parsed.data.tenantId !== request.tenantId) {
+    reply.code(403).send({ error: 'Forbidden', message: 'tenantId mismatch' });
+    return null;
+  }
+  return parsed.data;
+}
 
 /**
  * Ingest routes — receive raw model/tool call telemetry from customer agents.
@@ -27,20 +62,8 @@ export function buildIngestRoutes(adapter: IProviderAdapter) {
     app.post<{ Body: ModelCallIngest }>(
       '/v1/ingest/model-call',
       async (request, reply) => {
-        const parsed = ModelCallIngestSchema.safeParse(request.body);
-        if (!parsed.success) {
-          return reply.code(422).send({
-            error: 'UnprocessableEntity',
-            message: 'Invalid payload',
-            issues: parsed.error.issues,
-          });
-        }
-
-        const data = parsed.data;
-
-        if (data.tenantId !== request.tenantId) {
-          return reply.code(403).send({ error: 'Forbidden', message: 'tenantId mismatch' });
-        }
+        const data = parseAndAuthorize(ModelCallIngestSchema, request.body, request, reply);
+        if (!data) return;
 
         // Forward to provider
         let providerResponse;
@@ -89,20 +112,8 @@ export function buildIngestRoutes(adapter: IProviderAdapter) {
     app.post<{ Body: ToolCallIngest }>(
       '/v1/ingest/tool-call',
       async (request, reply) => {
-        const parsed = ToolCallIngestSchema.safeParse(request.body);
-        if (!parsed.success) {
-          return reply.code(422).send({
-            error: 'UnprocessableEntity',
-            message: 'Invalid payload',
-            issues: parsed.error.issues,
-          });
-        }
-
-        const data = parsed.data;
-
-        if (data.tenantId !== request.tenantId) {
-          return reply.code(403).send({ error: 'Forbidden', message: 'tenantId mismatch' });
-        }
+        const data = parseAndAuthorize(ToolCallIngestSchema, request.body, request, reply);
+        if (!data) return;
 
         if (app.queues) {
           app.queues.toolCall.enqueue(data).catch((err: unknown) => {
@@ -124,20 +135,8 @@ export function buildIngestRoutes(adapter: IProviderAdapter) {
     app.post<{ Body: AuditEventIngest }>(
       '/v1/ingest/audit-event',
       async (request, reply) => {
-        const parsed = AuditEventIngestSchema.safeParse(request.body);
-        if (!parsed.success) {
-          return reply.code(422).send({
-            error: 'UnprocessableEntity',
-            message: 'Invalid payload',
-            issues: parsed.error.issues,
-          });
-        }
-
-        const data = parsed.data;
-
-        if (data.tenantId !== request.tenantId) {
-          return reply.code(403).send({ error: 'Forbidden', message: 'tenantId mismatch' });
-        }
+        const data = parseAndAuthorize(AuditEventIngestSchema, request.body, request, reply);
+        if (!data) return;
 
         if (app.queues) {
           app.queues.auditEvent.enqueue(data).catch((err: unknown) => {

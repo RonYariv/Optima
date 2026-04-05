@@ -1,4 +1,4 @@
-import { eq, and } from 'drizzle-orm';
+import { eq, and, sql } from 'drizzle-orm';
 import type { DbClient } from '../client.js';
 import { traces, traceSteps } from '../schema/index.js';
 import type { NewTrace, NewTraceStep } from '../schema/index.js';
@@ -39,6 +39,18 @@ export class TraceRepository {
       });
   }
 
+  /** Atomically add cost and token counts to a trace's running totals (PERF-5). */
+  async incrementCost(traceId: string, costUsd: string, tokens: number): Promise<void> {
+    await this.db
+      .update(traces)
+      .set({
+        totalCostUsd: sql`COALESCE(total_cost_usd, 0) + ${costUsd}::numeric`,
+        totalTokens: sql`COALESCE(total_tokens, 0) + ${tokens}`,
+      })
+      .where(eq(traces.id, traceId));
+  }
+
+  /** @internal Used only in integration tests — routes use fetchTraceWithSteps directly. */
   async findById(tenantId: string, traceId: string) {
     return this.db.query.traces.findFirst({
       where: and(eq(traces.id, traceId), eq(traces.tenantId, tenantId)),
@@ -46,6 +58,7 @@ export class TraceRepository {
     });
   }
 
+  /** @internal Used only in integration tests. */
   async findStepById(tenantId: string, stepId: string) {
     return this.db.query.traceSteps.findFirst({
       where: and(eq(traceSteps.id, stepId), eq(traceSteps.tenantId, tenantId)),

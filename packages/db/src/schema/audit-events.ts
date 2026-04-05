@@ -1,5 +1,6 @@
 import { pgEnum, pgTable, text, timestamp, integer, boolean, jsonb, index } from 'drizzle-orm/pg-core';
 import { traces } from './traces.js';
+import { traceSteps } from './trace-steps.js';
 
 export const auditEventKindEnum = pgEnum('audit_event_kind', [
   'agent_start',
@@ -28,6 +29,7 @@ export const auditEvents = pgTable(
     latencyMs: integer('latency_ms'),
     success: boolean('success'),
     error: jsonb('error'),
+    stepId: text('step_id').references(() => traceSteps.id),
     metadata: jsonb('metadata').notNull().default({}),
     occurredAt: timestamp('occurred_at', { withTimezone: true }).notNull(),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
@@ -36,6 +38,7 @@ export const auditEvents = pgTable(
     index('audit_events_trace_id_idx').on(t.traceId),
     index('audit_events_tenant_created_idx').on(t.tenantId, t.createdAt),
     index('audit_events_trace_seq_idx').on(t.traceId, t.sequenceNo),
+    index('audit_events_step_id_idx').on(t.stepId),
   ],
 );
 

@@ -8,7 +8,7 @@ from __future__ import annotations
 import json
 from typing import Any, Dict, Optional
 
-from .types import ModelCallPayload, ToolCallPayload
+from .types import AuditEventPayload, ModelCallPayload, ToolCallPayload
 
 
 class _AsyncIngest:
@@ -78,6 +78,43 @@ class _AsyncIngest:
             metadata=metadata or {},
         )
         await self._client._post("/v1/ingest/tool-call", payload.to_dict())
+
+    async def audit_event(
+        self,
+        tenant_id: str,
+        project_id: str,
+        trace_id: str,
+        agent_id: str,
+        sequence_no: int,
+        kind: str,
+        occurred_at: str,
+        actor_id: Optional[str] = None,
+        name: Optional[str] = None,
+        input: Optional[Dict[str, Any]] = None,
+        output: Optional[Dict[str, Any]] = None,
+        latency_ms: Optional[int] = None,
+        success: Optional[bool] = None,
+        error: Optional[Dict[str, Any]] = None,
+        metadata: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        payload = AuditEventPayload(
+            tenant_id=tenant_id,
+            project_id=project_id,
+            trace_id=trace_id,
+            agent_id=agent_id,
+            sequence_no=sequence_no,
+            kind=kind,  # type: ignore[arg-type]
+            occurred_at=occurred_at,
+            actor_id=actor_id,
+            name=name,
+            input=input,
+            output=output,
+            latency_ms=latency_ms,
+            success=success,
+            error=error,
+            metadata=metadata or {},
+        )
+        await self._client._post("/v1/ingest/audit-event", payload.to_dict())
 
 
 class AsyncOptimaClient:

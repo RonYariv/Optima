@@ -7,9 +7,10 @@ COPY apps/api-gateway/package.json             ./apps/api-gateway/
 COPY apps/control-api/package.json             ./apps/control-api/
 COPY apps/web/package.json                     ./apps/web/
 COPY packages/db/package.json                  ./packages/db/
+COPY packages/fastify-auth/package.json        ./packages/fastify-auth/
 COPY packages/queue/package.json               ./packages/queue/
 COPY packages/schemas/package.json             ./packages/schemas/
-COPY packages/sdk-node/package.json                 ./packages/sdk-node/
+COPY packages/sdk-node/package.json            ./packages/sdk-node/
 COPY services/analytics-workers/package.json   ./services/analytics-workers/
 
 RUN npm ci --omit=dev
@@ -23,9 +24,10 @@ COPY apps/api-gateway/package.json             ./apps/api-gateway/
 COPY apps/control-api/package.json             ./apps/control-api/
 COPY apps/web/package.json                     ./apps/web/
 COPY packages/db/package.json                  ./packages/db/
+COPY packages/fastify-auth/package.json        ./packages/fastify-auth/
 COPY packages/queue/package.json               ./packages/queue/
 COPY packages/schemas/package.json             ./packages/schemas/
-COPY packages/sdk-node/package.json                 ./packages/sdk-node/
+COPY packages/sdk-node/package.json            ./packages/sdk-node/
 COPY services/analytics-workers/package.json   ./services/analytics-workers/
 
 RUN npm ci
@@ -35,7 +37,8 @@ COPY . .
 RUN npm run build -w @agent-optima/schemas
 RUN npm run build -w @agent-optima/queue
 RUN npm run build -w @agent-optima/db
-RUN npm run build -w @agent-optima/sdk
+RUN npm run build -w @agent-optima/fastify-auth
+RUN npm run build -w @agent-optima/sdk-node
 RUN npm run build -w @agent-optima/analytics-workers
 
 # ── Stage 3: Runner ───────────────────────────────────────────────────────────

@@ -6,11 +6,12 @@ import TracesPage from './pages/TracesPage'
 import TraceDetailPage from './pages/TraceDetailPage'
 import FailuresPage from './pages/FailuresPage'
 import CostPage from './pages/CostPage'
+import { tokenStore } from './lib/token-store'
 
 export default function App() {
-  const [token, setToken] = useState(() => sessionStorage.getItem('ao_token') ?? '')
+  const [hasToken, setHasToken] = useState(() => !!tokenStore.get())
 
-  if (!token) return <TokenGate onSave={setToken} />
+  if (!hasToken) return <TokenGate onSave={() => setHasToken(true)} />
 
   return (
     <Routes>

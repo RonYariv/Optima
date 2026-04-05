@@ -26,11 +26,11 @@ async function main() {
 
   // ── Migrations ──────────────────────────────────────────────────────────── 
   console.log('Running DB migrations...');
-  await runMigrations(config.DATABASE_URL);
+  await runMigrations(config.DATABASE_URL, config.DATABASE_SSL === 'disable');
   console.log('Migrations applied.');
 
   // ── DB ──────────────────────────────────────────────────────────────────── 
-  const db = createDbClient(config.DATABASE_URL);
+  const db = createDbClient(config.DATABASE_URL, config.DATABASE_SSL === 'disable');
 
   const traceRepo = new TraceRepository(db);
   const modelCallRepo = new ModelCallRepository(db);
@@ -61,7 +61,7 @@ async function main() {
   // ── Workers ───────────────────────────────────────────────────────────────
   const modelCallWorker = new ModelCallWorker(traceRepo, modelCallRepo, pricing);
   const toolCallWorker = new ToolCallWorker(traceRepo, toolCallRepo, failureRepo);
-  const auditEventWorker = new AuditEventWorker(auditEventRepo);
+  const auditEventWorker = new AuditEventWorker(auditEventRepo, traceRepo);
 
   const ac = new AbortController();
 

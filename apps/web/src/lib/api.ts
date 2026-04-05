@@ -3,17 +3,18 @@ import type {
   Trace,
   TraceGraph,
   Failure,
-  CostSummaryItem,
+  CostSummaryResponse,
   TraceStatus,
   FailureSeverity,
   CostGroupBy,
   AuditEvent,
 } from '../types'
+import { tokenStore } from './token-store'
 
 const BASE = (import.meta.env.VITE_API_URL as string | undefined) ?? 'http://localhost:3001'
 
 function authHeaders(): HeadersInit {
-  const token = sessionStorage.getItem('ao_token')
+  const token = tokenStore.get()
   return token ? { Authorization: `Bearer ${token}` } : {}
 }
 
@@ -83,6 +84,6 @@ export const api = {
 
   cost: {
     summary: (params?: CostSummaryParams) =>
-      request<CostSummaryItem[]>(`/v1/cost/summary${buildQuery({ ...params })}`),
+      request<CostSummaryResponse>(`/v1/cost/summary${buildQuery({ ...params })}`),
   },
 }

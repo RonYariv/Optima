@@ -9,6 +9,34 @@ export type FailureCategory =
   | 'handoff_error'
   | 'unknown';
 
+export type AuditEventKind =
+  | 'agent_start'
+  | 'agent_end'
+  | 'agent_handoff'
+  | 'model_call'
+  | 'tool_call'
+  | 'mcp_call'
+  | 'custom';
+
+export interface AuditEventPayload {
+  tenantId: string;
+  projectId: string;
+  traceId: string;
+  agentId: string;
+  sequenceNo: number;
+  kind: AuditEventKind;
+  actorId?: string;
+  name?: string;
+  input?: Record<string, unknown>;
+  output?: Record<string, unknown>;
+  latencyMs?: number;
+  success?: boolean;
+  error?: { type?: string; message?: string };
+  metadata?: Record<string, unknown>;
+  /** ISO 8601 datetime string */
+  occurredAt: string;
+}
+
 export interface ModelCallPayload {
   tenantId: string;
   projectId: string;
@@ -72,6 +100,9 @@ export class OptimaClient {
 
     toolCall: (payload: ToolCallPayload): Promise<void> =>
       this.post('/v1/ingest/tool-call', payload),
+
+    auditEvent: (payload: AuditEventPayload): Promise<void> =>
+      this.post('/v1/ingest/audit-event', payload),
   };
 
   private async post(path: string, body: unknown): Promise<void> {

@@ -43,14 +43,21 @@ export interface Failure {
   stepId?: string
   severity: FailureSeverity
   category: string
-  message: string
+  reason: string  // DB column name — was incorrectly typed as `message` (SCHEMA-1)
   occurredAt: string
 }
 
-export interface CostSummaryItem {
-  groupKey: string
+export interface CostBreakdownItem {
+  key: string
+  costUsd: number
+  tokenCount: number
+  callCount: number
+}
+
+export interface CostSummaryResponse {
   totalCostUsd: number
-  totalTokens?: number
+  totalTokens: number
+  breakdown: CostBreakdownItem[]
 }
 
 export interface PaginatedResponse<T> {
@@ -89,6 +96,16 @@ export interface RFNodeData extends Record<string, unknown> {
   toolName?: string
   success?: boolean
   errorType?: string
+}
+
+export interface TraceGraph {
+  nodes: Array<{
+    id: string
+    type: 'agent' | 'model_call' | 'tool_call'
+    position: { x: number; y: number }
+    data: RFNodeData
+  }>
+  edges: Array<{ id: string; source: string; target: string }>
 }
 
 export interface RFNode {

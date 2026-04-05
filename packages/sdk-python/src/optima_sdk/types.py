@@ -9,6 +9,9 @@ FailureSeverity = Literal["low", "medium", "high", "critical"]
 FailureCategory = Literal[
     "tool_error", "provider_error", "logic_break", "handoff_error", "unknown"
 ]
+AuditEventKind = Literal[
+    "agent_start", "agent_end", "agent_handoff", "model_call", "tool_call", "mcp_call", "custom"
+]
 
 
 @dataclass
@@ -76,4 +79,50 @@ class ToolCallPayload:
         }
         if self.error_type is not None:
             d["errorType"] = self.error_type
+        return d
+
+
+@dataclass
+class AuditEventPayload:
+    tenant_id: str
+    project_id: str
+    trace_id: str
+    agent_id: str
+    sequence_no: int
+    kind: AuditEventKind
+    occurred_at: str  # ISO 8601
+    actor_id: Optional[str] = None
+    name: Optional[str] = None
+    input: Optional[Dict[str, Any]] = None
+    output: Optional[Dict[str, Any]] = None
+    latency_ms: Optional[int] = None
+    success: Optional[bool] = None
+    error: Optional[Dict[str, Any]] = None
+    metadata: Dict[str, Any] = field(default_factory=dict)
+
+    def to_dict(self) -> Dict[str, Any]:
+        d: Dict[str, Any] = {
+            "tenantId": self.tenant_id,
+            "projectId": self.project_id,
+            "traceId": self.trace_id,
+            "agentId": self.agent_id,
+            "sequenceNo": self.sequence_no,
+            "kind": self.kind,
+            "occurredAt": self.occurred_at,
+            "metadata": self.metadata,
+        }
+        if self.actor_id is not None:
+            d["actorId"] = self.actor_id
+        if self.name is not None:
+            d["name"] = self.name
+        if self.input is not None:
+            d["input"] = self.input
+        if self.output is not None:
+            d["output"] = self.output
+        if self.latency_ms is not None:
+            d["latencyMs"] = self.latency_ms
+        if self.success is not None:
+            d["success"] = self.success
+        if self.error is not None:
+            d["error"] = self.error
         return d

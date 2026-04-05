@@ -1,4 +1,4 @@
-import { pgEnum, pgTable, text, timestamp, jsonb, index } from 'drizzle-orm/pg-core';
+import { pgEnum, pgTable, text, timestamp, jsonb, index, numeric, integer } from 'drizzle-orm/pg-core';
 
 export const traceStatusEnum = pgEnum('trace_status', [
   'running',
@@ -18,6 +18,8 @@ export const traces = pgTable(
     startedAt: timestamp('started_at', { withTimezone: true }).notNull(),
     endedAt: timestamp('ended_at', { withTimezone: true }),
     metadata: jsonb('metadata').notNull().default({}),
+    totalCostUsd: numeric('total_cost_usd', { precision: 14, scale: 8 }).default('0'),
+    totalTokens: integer('total_tokens').default(0),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [

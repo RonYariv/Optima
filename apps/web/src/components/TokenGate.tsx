@@ -1,7 +1,8 @@
 import { useState } from 'react'
+import { tokenStore } from '../lib/token-store'
 
 interface Props {
-  onSave: (token: string) => void
+  onSave: () => void
 }
 
 export default function TokenGate({ onSave }: Props) {
@@ -11,8 +12,8 @@ export default function TokenGate({ onSave }: Props) {
     e.preventDefault()
     const trimmed = value.trim()
     if (!trimmed) return
-    sessionStorage.setItem('ao_token', trimmed)
-    onSave(trimmed)
+    tokenStore.set(trimmed)
+    onSave()
   }
 
   return (

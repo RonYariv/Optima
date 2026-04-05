@@ -1,17 +1,41 @@
 import type { AuditEventIngest } from '@agent-optima/schemas';
-import type { AuditEventRepository } from '@agent-optima/db';
-import { randomUUID } from 'crypto';
+import type { AuditEventRepository, TraceRepository } from '@agent-optima/db';
 
 /**
  * Handles an audit-event ingest job:
- *  Inserts the audit event row (idempotent on id).
+ *  1. Upsert the parent trace (so FK constraint is satisfied)
+ *  2. Inserts the audit event row (idempotent on id).
  *
  * The id is derived from traceId + sequenceNo so replaying the same job is safe.
  */
 export class AuditEventWorker {
-  constructor(private readonly auditEventRepo: AuditEventRepository) {}
+  constructor(
+    private readonly auditEventRepo: AuditEventRepository,
+    private readonly traceRepo: TraceRepository,
+  ) {}
 
   async handle(data: AuditEventIngest): Promise<void> {
+    const now = new Date();
+
+    // 1. Upsert trace so the FK is satisfied regardless of message order.
+    //    On agent_end, finalize the trace status based on the success field.
+    const isEnd = data.kind === 'agent_end';
+    const status = isEnd
+      ? (data.success === false ? 'failed' : 'success')
+      : 'running';
+
+    await this.traceRepo.upsertTrace({
+      id: data.traceId,
+      tenantId: data.tenantId,
+      projectId: data.projectId,
+      agentId: data.agentId,
+      status,
+      startedAt: new Date(data.occurredAt),
+      endedAt: isEnd ? new Date(data.occurredAt) : undefined,
+      metadata: data.metadata,
+      createdAt: now,
+    });
+
     const id = `${data.traceId}:${data.sequenceNo}`;
 
     await this.auditEventRepo.insert({
@@ -27,6 +51,7 @@ export class AuditEventWorker {
       latencyMs: data.latencyMs ?? null,
       success: data.success ?? null,
       error: data.error ?? null,
+      stepId: data.stepId ?? null,
       metadata: data.metadata,
       occurredAt: new Date(data.occurredAt),
       createdAt: new Date(),

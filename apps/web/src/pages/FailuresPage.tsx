@@ -2,32 +2,20 @@ import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '../lib/api'
 import SeverityBadge from '../components/SeverityBadge'
+import PaginationFooter from '../components/PaginationFooter'
+import { usePagination } from '../lib/use-pagination'
 import type { FailureSeverity } from '../types'
 
 const SEVERITIES: FailureSeverity[] = ['low', 'medium', 'high', 'critical']
 
 export default function FailuresPage() {
   const [severity, setSeverity] = useState<FailureSeverity | ''>('')
-  const [cursor, setCursor] = useState<string | undefined>()
-  const [history, setHistory] = useState<string[]>([])
+  const { cursor, history, nextPage, prevPage, reset } = usePagination()
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ['failures', severity, cursor],
     queryFn: () => api.failures.list({ severity: severity || undefined, cursor }),
   })
-
-  function nextPage() {
-    if (data?.nextCursor) {
-      setHistory((h) => [...h, cursor ?? ''])
-      setCursor(data.nextCursor)
-    }
-  }
-
-  function prevPage() {
-    const prev = history[history.length - 1]
-    setHistory((h) => h.slice(0, -1))
-    setCursor(prev === '' ? undefined : prev)
-  }
 
   return (
     <div>
@@ -43,8 +31,7 @@ export default function FailuresPage() {
           value={severity}
           onChange={(e) => {
             setSeverity(e.target.value as FailureSeverity | '')
-            setCursor(undefined)
-            setHistory([])
+            reset()
           }}
         >
           <option value="">All severities</option>
@@ -92,7 +79,7 @@ export default function FailuresPage() {
                 <td className="px-4 py-3"><SeverityBadge severity={failure.severity} /></td>
                 <td className="px-4 py-3" style={{ color: 'var(--color-text)' }}>{failure.category}</td>
                 <td className="px-4 py-3 max-w-xs truncate" style={{ color: 'var(--color-muted)' }}>
-                  {failure.message}
+                  {failure.reason}
                 </td>
                 <td className="px-4 py-3 font-mono text-xs" style={{ color: 'var(--color-muted)' }}>
                   {failure.traceId.slice(0, 8)}…
@@ -113,24 +100,12 @@ export default function FailuresPage() {
         </table>
       </div>
 
-      <div className="flex gap-2 mt-4 justify-end">
-        <button
-          className="px-3 py-1.5 text-sm rounded border disabled:opacity-40"
-          style={{ borderColor: 'var(--color-border)', color: 'var(--color-text)', backgroundColor: 'var(--color-surface)' }}
-          onClick={prevPage}
-          disabled={history.length === 0}
-        >
-          ← Prev
-        </button>
-        <button
-          className="px-3 py-1.5 text-sm rounded border disabled:opacity-40"
-          style={{ borderColor: 'var(--color-border)', color: 'var(--color-text)', backgroundColor: 'var(--color-surface)' }}
-          onClick={nextPage}
-          disabled={!data?.nextCursor}
-        >
-          Next →
-        </button>
-      </div>
+      <PaginationFooter
+        hasPrev={history.length > 0}
+        hasNext={!!data?.nextCursor}
+        onPrev={prevPage}
+        onNext={() => nextPage(data?.nextCursor)}
+      />
     </div>
   )
 }

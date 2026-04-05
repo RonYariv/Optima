@@ -24,7 +24,17 @@ export async function createServer() {
   });
 
   // ── Security ────────────────────────────────────────────────────────────
-  await app.register(fastifyHelmet, { contentSecurityPolicy: false });
+  await app.register(fastifyHelmet, {
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc:  ["'self'"],
+        styleSrc:   ["'self'", "'unsafe-inline'"],
+        imgSrc:     ["'self'", 'data:'],
+        connectSrc: ["'self'"],
+      },
+    },
+  });
   await app.register(fastifyRateLimit, {
     max: config.RATE_LIMIT_MAX,
     timeWindow: config.RATE_LIMIT_WINDOW_MS,

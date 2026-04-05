@@ -38,7 +38,7 @@ export const queuePlugin = fp(async (app: FastifyInstance) => {
 
   const pgSql = postgres(config.DATABASE_URL, {
     max: 2,
-    ssl: config.DATABASE_URL.includes('localhost') ? false : 'require',
+    ssl: config.DATABASE_SSL === 'disable' ? false : 'require',
   });
 
   const modelCallQueue = new PgmqQueue<ModelCallIngest>(pgSql, QUEUE_MODEL_CALL);
