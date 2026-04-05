@@ -9,7 +9,11 @@ import CostPage from './pages/CostPage'
 import { tokenStore } from './lib/token-store'
 
 export default function App() {
-  const [hasToken, setHasToken] = useState(() => !!tokenStore.get())
+  const [hasToken, setHasToken] = useState(() => {
+    const devJwt = import.meta.env.VITE_DEV_JWT as string | undefined
+    if (devJwt && !tokenStore.get()) tokenStore.set(devJwt)
+    return !!tokenStore.get()
+  })
 
   if (!hasToken) return <TokenGate onSave={() => setHasToken(true)} />
 
