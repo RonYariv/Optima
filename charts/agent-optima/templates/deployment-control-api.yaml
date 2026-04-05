@@ -17,8 +17,10 @@ spec:
       labels:
         {{- include "agent-optima.labels" . | nindent 8 }}
         app.kubernetes.io/component: control-api
+      {{- with .Values.podAnnotations }}
       annotations:
-        {{- toYaml .Values.podAnnotations | nindent 8 }}
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
     spec:
       {{- with .Values.podSecurityContext }}
       securityContext:

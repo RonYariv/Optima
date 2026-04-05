@@ -11,6 +11,8 @@ if (!url) {
   process.exit(1);
 }
 
+const sslDisabled = process.env['DATABASE_SSL'] === 'disable';
+
 console.log('Running database migrations...');
-await runMigrations(url);
+await runMigrations(url, sslDisabled);
 console.log('Database migrations complete.');
