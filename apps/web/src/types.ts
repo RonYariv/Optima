@@ -17,8 +17,14 @@ export interface Trace {
   status: TraceStatus
   startedAt: string
   endedAt?: string
+  metadata?: Record<string, unknown>
   totalCostUsd?: number
   totalTokens?: number
+}
+
+export interface TraceDetail extends Trace {
+  steps: TraceStep[]
+  graph: TraceGraph
 }
 
 export interface TraceStep {

@@ -13,6 +13,7 @@ interface SandboxConfig {
   baseUrl: string
   serverUrl: string
   controlApiUrl: string
+  projectId: string
 }
 
 function loadConfig(): SandboxConfig {
@@ -27,6 +28,7 @@ function loadConfig(): SandboxConfig {
     baseUrl: 'https://api.groq.com/openai/v1',
     serverUrl: 'http://localhost:8765',
     controlApiUrl: 'http://localhost:3001',
+    projectId: 'sandbox',
   }
 }
 
@@ -156,9 +158,20 @@ function ConfigPanel({ config, onChange }: { config: SandboxConfig; onChange: (c
                   className="w-full px-3 py-2 rounded text-sm text-slate-200 border outline-none focus:border-indigo-500 transition-colors"
                   style={{ backgroundColor: 'var(--color-bg)', borderColor: 'var(--color-border)' }} />
               </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-xs text-slate-500">Optima Project ID</label>
+                <input type="text" value={config.projectId}
+                  onChange={e => onChange({ ...config, projectId: e.target.value.trim() || 'sandbox' })}
+                  placeholder="sandbox"
+                  className="w-full px-3 py-2 rounded text-sm text-slate-200 border outline-none focus:border-indigo-500 transition-colors"
+                  style={{ backgroundColor: 'var(--color-bg)', borderColor: 'var(--color-border)' }} />
+              </div>
             </div>
             <p className="text-[11px] text-slate-500 mt-2">
               Start: <code className="text-slate-400">cd sandbox/python && uvicorn server:app --port 8765 --reload</code>
+            </p>
+            <p className="text-[11px] text-slate-500 mt-1">
+              Telemetry requires JWT from the main dashboard token field.
             </p>
           </div>
 
@@ -214,10 +227,22 @@ export default function SandboxPage() {
   }
 
   const configValid = config.apiKey.trim().length > 0 && config.model.trim().length > 0
+  const telemetryToken = tokenStore.get().trim()
 
   const send = useCallback(async () => {
     const text = input.trim()
     if (!text || loading || !configValid || serverStatus !== 'online') return
+
+    if (!telemetryToken) {
+      setDisplayMessages(prev => [
+        ...prev,
+        {
+          role: 'error',
+          content: 'Missing Optima JWT token. Paste token in the dashboard first; otherwise traces are not recorded.',
+        },
+      ])
+      return
+    }
 
     const historyWithUser = [...serverHistory, { role: 'user' as const, content: text }]
 
@@ -233,7 +258,11 @@ export default function SandboxPage() {
           agent_id: selectedAgentId,
           messages: historyWithUser,
           llm_config: { api_key: config.apiKey, model: config.model, base_url: config.baseUrl },
-          optima_config: { control_api_url: config.controlApiUrl, token: tokenStore.get() },
+          optima_config: {
+            control_api_url: config.controlApiUrl,
+            project_id: config.projectId || 'sandbox',
+            token: telemetryToken,
+          },
         }),
       })
 
@@ -250,14 +279,14 @@ export default function SandboxPage() {
     } finally {
       setLoading(false)
     }
-  }, [input, loading, configValid, serverStatus, serverHistory, selectedAgentId, config])
+  }, [input, loading, configValid, serverStatus, serverHistory, selectedAgentId, config, telemetryToken])
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void send() }
   }
 
   const selectedAgent = agents.find(a => a.id === selectedAgentId)
-  const canSend = configValid && serverStatus === 'online' && !loading && input.trim().length > 0
+  const canSend = configValid && serverStatus === 'online' && !loading && input.trim().length > 0 && telemetryToken.length > 0
 
   return (
     <div className="flex flex-col gap-4 h-full max-w-5xl mx-auto">

@@ -1,15 +1,16 @@
-import type { FastifyInstance } from 'fastify';
+import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { and, eq, lt, or, desc, gte, lte } from 'drizzle-orm';
 import type { DbClient } from '@agent-optima/db';
-import { failureEvents } from '@agent-optima/db';
+import { failureEvents, traces } from '@agent-optima/db';
 import { decodeCursor } from '../lib/cursor.js';
 import { PaginationSchema, buildPage } from '../lib/pagination.js';
 import { z } from 'zod';
 
-function scopedProjectIds(request: { auth: { projectIds: string[] } }): string[] {
-  const allowed = request.auth.projectIds;
+function scopedProjectIds(request: FastifyRequest): string[] | null {
+  const auth = (request as FastifyRequest & { auth?: { projectIds?: string[] } }).auth;
+  const allowed = auth?.projectIds ?? [];
   if (allowed.length === 0) {
-    throw new Error('Token has no project scope');
+    return null;
   }
   return allowed;
 }
@@ -30,6 +31,9 @@ export function buildFailureRoutes(db: DbClient) {
       }
       const { severity, category, from, to, limit, cursor } = q.data;
       const projectIds = scopedProjectIds(request);
+      if (!projectIds) {
+        return reply.code(403).send({ error: 'Forbidden', message: 'Token has no access to requested project(s)' });
+      }
 
       const cursorData = cursor ? decodeCursor(cursor) : null;
 

@@ -1,6 +1,7 @@
 import type {
   PaginatedResponse,
   Trace,
+  TraceDetail,
   TraceGraph,
   Failure,
   CostSummaryResponse,
@@ -68,7 +69,7 @@ export const api = {
       request<PaginatedResponse<Trace>>(`/v1/traces${buildQuery({ ...params })}`),
 
     get: (traceId: string) =>
-      request<Trace>(`/v1/traces/${traceId}`),
+      request<TraceDetail>(`/v1/traces/${traceId}`),
 
     graph: (traceId: string) =>
       request<TraceGraph>(`/v1/traces/${traceId}/graph`),

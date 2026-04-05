@@ -36,7 +36,7 @@ declare module 'fastify' {
 export const authPlugin = fp(async (app: FastifyInstance, opts: AuthPluginOptions) => {
   const JWT_KEY = new TextEncoder().encode(opts.jwtSecret);
 
-  app.decorateRequest('auth', null);
+  app.decorateRequest('auth', undefined as unknown as AuthContext);
 
   app.addHook('onRequest', async (request, reply) => {
     const routeConfig = (request.routeOptions as { config?: { public?: boolean } })?.config;

@@ -1,4 +1,4 @@
-import type { FastifyInstance } from 'fastify';
+import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { and, eq, lt, or, desc, asc, gte, lte } from 'drizzle-orm';
 import type { DbClient } from '@agent-optima/db';
 import {
@@ -20,14 +20,15 @@ import { PaginationSchema, buildPage } from '../lib/pagination.js';
 import { buildTraceGraph, type StepWithDetails, type TraceWithSteps } from '../lib/build-trace-graph.js';
 import { z } from 'zod';
 
-function scopedProjectIds(request: { auth: { projectIds: string[] } }, requestedProjectId?: string): string[] {
-  const allowed = request.auth.projectIds;
+function scopedProjectIds(request: FastifyRequest, requestedProjectId?: string): string[] | null {
+  const auth = (request as FastifyRequest & { auth?: { projectIds?: string[] } }).auth;
+  const allowed = auth?.projectIds ?? [];
   if (allowed.length === 0) {
-    throw new Error('Token has no project scope');
+    return null;
   }
   if (requestedProjectId) {
     if (!allowed.includes(requestedProjectId)) {
-      throw new Error('Forbidden project');
+      return null;
     }
     return [requestedProjectId];
   }
@@ -112,6 +113,9 @@ export function buildTraceRoutes(db: DbClient) {
       const { projectId, status, from, to, limit, cursor } = q.data;
 
       const projectIds = scopedProjectIds(request, projectId);
+      if (!projectIds) {
+        return reply.code(403).send({ error: 'Forbidden', message: 'Token has no access to requested project(s)' });
+      }
       const cursorData = cursor ? decodeCursor(cursor) : null;
 
       const conditions = [or(...projectIds.map((pid) => eq(traces.projectId, pid)))!];

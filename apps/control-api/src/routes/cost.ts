@@ -1,18 +1,19 @@
-import type { FastifyInstance } from 'fastify';
-import { and, eq, gte, lte, sql, sum } from 'drizzle-orm';
+import type { FastifyInstance, FastifyRequest } from 'fastify';
+import { and, eq, gte, lte, or, sql, sum } from 'drizzle-orm';
 import type { DbClient } from '@agent-optima/db';
-import { modelCalls, traceSteps } from '@agent-optima/db';
+import { modelCalls, traceSteps, traces } from '@agent-optima/db';
 import { PaginationSchema } from '../lib/pagination.js';
 import { z } from 'zod';
 
-function scopedProjectIds(request: { auth: { projectIds: string[] } }, requestedProjectId?: string): string[] {
-  const allowed = request.auth.projectIds;
+function scopedProjectIds(request: FastifyRequest, requestedProjectId?: string): string[] | null {
+  const auth = (request as FastifyRequest & { auth?: { projectIds?: string[] } }).auth;
+  const allowed = auth?.projectIds ?? [];
   if (allowed.length === 0) {
-    throw new Error('Token has no project scope');
+    return null;
   }
   if (requestedProjectId) {
     if (!allowed.includes(requestedProjectId)) {
-      throw new Error('Forbidden project');
+      return null;
     }
     return [requestedProjectId];
   }
@@ -35,6 +36,9 @@ export function buildCostRoutes(db: DbClient) {
       }
       const { projectId, from, to, groupBy } = q.data;
       const projectIds = scopedProjectIds(request, projectId);
+      if (!projectIds) {
+        return reply.code(403).send({ error: 'Forbidden', message: 'Token has no access to requested project(s)' });
+      }
 
       const conditions = [or(...projectIds.map((pid) => eq(traces.projectId, pid)))!];
       if (from) conditions.push(gte(modelCalls.createdAt, new Date(from)));

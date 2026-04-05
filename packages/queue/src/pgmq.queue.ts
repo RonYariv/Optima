@@ -31,10 +31,17 @@ export class PgmqQueue<T> implements IQueue<T> {
 
   /**
    * Ensure the queue exists. Call once at startup.
-   * PGMQ's create is idempotent — safe to call on every boot.
+   * pgmq.create() is NOT idempotent on Supabase when the queue already belongs
+   * to the pgmq extension (error code 55000). We swallow that specific error.
    */
   async init(): Promise<void> {
-    await this.sql`SELECT pgmq.create(${this.name})`;
+    try {
+      await this.sql`SELECT pgmq.create(${this.name})`;
+    } catch (err: unknown) {
+      // "already a member of extension" — queue exists, nothing to do
+      if ((err as { code?: string }).code === '55000') return;
+      throw err;
+    }
   }
 
   async enqueue(payload: T): Promise<bigint> {
