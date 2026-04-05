@@ -22,7 +22,6 @@ export class ToolCallWorker {
     // 1. Upsert trace
     await this.traceRepo.upsertTrace({
       id: data.traceId,
-      tenantId: data.tenantId,
       projectId: data.projectId,
       agentId: data.agentId,
       status: data.success ? 'running' : 'failed',
@@ -35,7 +34,6 @@ export class ToolCallWorker {
     await this.traceRepo.upsertStep({
       id: data.stepId,
       traceId: data.traceId,
-      tenantId: data.tenantId,
       stepIndex: data.stepIndex,
       agentId: data.agentId,
       type: 'tool',
@@ -50,7 +48,6 @@ export class ToolCallWorker {
       id: data.stepId,
       traceId: data.traceId,
       stepId: data.stepId,
-      tenantId: data.tenantId,
       toolName: data.toolName,
       success: data.success,
       latencyMs: data.latencyMs,
@@ -67,7 +64,6 @@ export class ToolCallWorker {
         id: `${data.stepId}:failure`,
         traceId: data.traceId,
         stepId: data.stepId,
-        tenantId: data.tenantId,
         severity: 'medium',
         category: 'tool_error',
         reason: `Tool "${data.toolName}" failed${data.errorType ? `: ${data.errorType}` : ''}`,

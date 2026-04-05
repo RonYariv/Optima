@@ -17,7 +17,6 @@ class _AsyncIngest:
 
     async def model_call(
         self,
-        tenant_id: str,
         project_id: str,
         trace_id: str,
         step_id: str,
@@ -32,7 +31,6 @@ class _AsyncIngest:
         metadata: Optional[Dict[str, Any]] = None,
     ) -> None:
         payload = ModelCallPayload(
-            tenant_id=tenant_id,
             project_id=project_id,
             trace_id=trace_id,
             step_id=step_id,
@@ -50,7 +48,6 @@ class _AsyncIngest:
 
     async def tool_call(
         self,
-        tenant_id: str,
         project_id: str,
         trace_id: str,
         step_id: str,
@@ -64,7 +61,6 @@ class _AsyncIngest:
         metadata: Optional[Dict[str, Any]] = None,
     ) -> None:
         payload = ToolCallPayload(
-            tenant_id=tenant_id,
             project_id=project_id,
             trace_id=trace_id,
             step_id=step_id,
@@ -81,7 +77,6 @@ class _AsyncIngest:
 
     async def audit_event(
         self,
-        tenant_id: str,
         project_id: str,
         trace_id: str,
         agent_id: str,
@@ -98,7 +93,6 @@ class _AsyncIngest:
         metadata: Optional[Dict[str, Any]] = None,
     ) -> None:
         payload = AuditEventPayload(
-            tenant_id=tenant_id,
             project_id=project_id,
             trace_id=trace_id,
             agent_id=agent_id,

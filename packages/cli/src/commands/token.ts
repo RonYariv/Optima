@@ -18,12 +18,6 @@ function hasFlag(args: string[], flag: string): boolean {
 }
 
 export async function generateToken(args: string[]): Promise<void> {
-  const tenant = getFlag(args, '--tenant');
-  if (!tenant) {
-    console.error('ERROR: --tenant <id> is required');
-    process.exit(1);
-  }
-
   const secret = getFlag(args, '--secret') ?? process.env['JWT_SECRET'];
   if (!secret) {
     console.error('ERROR: provide --secret <str> or set the JWT_SECRET environment variable');
@@ -53,7 +47,7 @@ export async function generateToken(args: string[]): Promise<void> {
   }
 
   const key = new TextEncoder().encode(secret);
-  let builder = new SignJWT({ tenantId: tenant })
+  let builder = new SignJWT({})
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
     .setIssuer(JWT_ISSUER)

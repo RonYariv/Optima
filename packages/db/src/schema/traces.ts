@@ -11,7 +11,6 @@ export const traces = pgTable(
   'traces',
   {
     id: text('id').primaryKey(),
-    tenantId: text('tenant_id').notNull(),
     projectId: text('project_id').notNull(),
     agentId: text('agent_id').notNull(),
     status: traceStatusEnum('status').notNull().default('running'),
@@ -23,8 +22,7 @@ export const traces = pgTable(
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
-    index('traces_tenant_created_idx').on(t.tenantId, t.createdAt),
-    index('traces_tenant_project_idx').on(t.tenantId, t.projectId),
+    index('traces_project_created_idx').on(t.projectId, t.createdAt),
   ],
 );
 

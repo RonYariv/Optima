@@ -21,7 +21,7 @@ export function buildCostRoutes(db: DbClient) {
       }
       const { from, to, groupBy } = q.data;
 
-      const conditions = [eq(modelCalls.tenantId, request.tenantId)];
+      const conditions = [];
       if (from) conditions.push(gte(modelCalls.createdAt, new Date(from)));
       if (to) conditions.push(lte(modelCalls.createdAt, new Date(to)));
 

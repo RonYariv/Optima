@@ -16,7 +16,6 @@ AuditEventKind = Literal[
 
 @dataclass
 class ModelCallPayload:
-    tenant_id: str
     project_id: str
     trace_id: str
     step_id: str
@@ -32,7 +31,6 @@ class ModelCallPayload:
 
     def to_dict(self) -> Dict[str, Any]:
         return {
-            "tenantId": self.tenant_id,
             "projectId": self.project_id,
             "traceId": self.trace_id,
             "stepId": self.step_id,
@@ -50,7 +48,6 @@ class ModelCallPayload:
 
 @dataclass
 class ToolCallPayload:
-    tenant_id: str
     project_id: str
     trace_id: str
     step_id: str
@@ -65,7 +62,6 @@ class ToolCallPayload:
 
     def to_dict(self) -> Dict[str, Any]:
         d: Dict[str, Any] = {
-            "tenantId": self.tenant_id,
             "projectId": self.project_id,
             "traceId": self.trace_id,
             "stepId": self.step_id,
@@ -84,7 +80,6 @@ class ToolCallPayload:
 
 @dataclass
 class AuditEventPayload:
-    tenant_id: str
     project_id: str
     trace_id: str
     agent_id: str
@@ -102,7 +97,6 @@ class AuditEventPayload:
 
     def to_dict(self) -> Dict[str, Any]:
         d: Dict[str, Any] = {
-            "tenantId": self.tenant_id,
             "projectId": self.project_id,
             "traceId": self.trace_id,
             "agentId": self.agent_id,

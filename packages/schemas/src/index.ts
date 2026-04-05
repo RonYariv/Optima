@@ -2,14 +2,12 @@ import { z } from 'zod';
 
 const isoDateTime = z.string().datetime();
 
-export const TenantIdSchema = z.string().min(3).max(128);
 export const ProjectIdSchema = z.string().min(3).max(128);
 export const AgentIdSchema = z.string().min(1).max(128);
 export const TraceIdSchema = z.string().min(1).max(128);
 export const StepIdSchema = z.string().min(1).max(128);
 
 export const ModelCallIngestSchema = z.object({
-  tenantId: TenantIdSchema,
   projectId: ProjectIdSchema,
   traceId: TraceIdSchema,
   stepId: StepIdSchema,
@@ -26,7 +24,6 @@ export const ModelCallIngestSchema = z.object({
 });
 
 export const ToolCallIngestSchema = z.object({
-  tenantId: TenantIdSchema,
   projectId: ProjectIdSchema,
   traceId: TraceIdSchema,
   stepId: StepIdSchema,
@@ -52,7 +49,6 @@ export const AuditEventKindSchema = z.enum([
 ]);
 
 export const AuditEventIngestSchema = z.object({
-  tenantId: TenantIdSchema,
   projectId: ProjectIdSchema,
   traceId: TraceIdSchema,
   stepId: StepIdSchema.optional(),
@@ -78,7 +74,6 @@ export const AuditEventIngestSchema = z.object({
 // CostEventSchema and FailureEventSchema are reserved for a future direct-ingest
 // endpoint. They are not consumed by any service today — do not remove.
 export const CostEventSchema = z.object({
-  tenantId: TenantIdSchema,
   traceId: TraceIdSchema,
   stepId: StepIdSchema,
   modelProvider: z.string().min(1).max(64),
@@ -89,7 +84,6 @@ export const CostEventSchema = z.object({
 });
 
 export const FailureEventSchema = z.object({
-  tenantId: TenantIdSchema,
   traceId: TraceIdSchema,
   stepId: StepIdSchema,
   severity: z.enum(['low', 'medium', 'high', 'critical']),

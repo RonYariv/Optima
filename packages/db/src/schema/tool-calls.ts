@@ -12,7 +12,6 @@ export const toolCalls = pgTable(
     stepId: text('step_id')
       .notNull()
       .references(() => traceSteps.id),
-    tenantId: text('tenant_id').notNull(),
     toolName: text('tool_name').notNull(),
     success: boolean('success').notNull(),
     latencyMs: integer('latency_ms').notNull(),
@@ -22,7 +21,6 @@ export const toolCalls = pgTable(
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
-    index('tool_calls_tenant_created_idx').on(t.tenantId, t.createdAt),
     index('tool_calls_trace_id_idx').on(t.traceId),
   ],
 );

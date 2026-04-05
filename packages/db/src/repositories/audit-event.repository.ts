@@ -1,4 +1,4 @@
-import { eq, and, asc } from 'drizzle-orm';
+import { eq, asc } from 'drizzle-orm';
 import type { DbClient } from '../client.js';
 import { auditEvents } from '../schema/index.js';
 import type { NewAuditEvent, AuditEvent } from '../schema/index.js';
@@ -13,11 +13,11 @@ export class AuditEventRepository {
       .onConflictDoNothing({ target: auditEvents.id });
   }
 
-  async findByTrace(traceId: string, tenantId: string): Promise<AuditEvent[]> {
+  async findByTrace(traceId: string): Promise<AuditEvent[]> {
     return this.db
       .select()
       .from(auditEvents)
-      .where(and(eq(auditEvents.traceId, traceId), eq(auditEvents.tenantId, tenantId)))
+      .where(eq(auditEvents.traceId, traceId))
       .orderBy(asc(auditEvents.sequenceNo));
   }
 }

@@ -26,7 +26,6 @@ export class AuditEventWorker {
 
     await this.traceRepo.upsertTrace({
       id: data.traceId,
-      tenantId: data.tenantId,
       projectId: data.projectId,
       agentId: data.agentId,
       status,
@@ -41,7 +40,6 @@ export class AuditEventWorker {
     await this.auditEventRepo.insert({
       id,
       traceId: data.traceId,
-      tenantId: data.tenantId,
       sequenceNo: data.sequenceNo,
       kind: data.kind,
       actorId: data.actorId ?? null,

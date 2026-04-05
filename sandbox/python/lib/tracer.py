@@ -15,13 +15,11 @@ class SandboxTracer:
     def __init__(
         self,
         client: OptimaClient,
-        tenant_id: str,
         project_id: str,
         trace_id: str,
         agent_id: str,
     ) -> None:
         self._client = client
-        self._tenant_id = tenant_id
         self._project_id = project_id
         self._trace_id = trace_id
         self._agent_id = agent_id
@@ -50,7 +48,6 @@ class SandboxTracer:
         seq = self._seq
         self._seq += 1
         self._client.ingest.audit_event(
-            tenant_id=self._tenant_id,
             project_id=self._project_id,
             trace_id=self._trace_id,
             agent_id=self._agent_id,

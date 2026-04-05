@@ -19,9 +19,9 @@ def _sleep(ms: float) -> None:
     time.sleep(ms / 1000)
 
 
-def run_langchain_style(client: OptimaClient, tenant_id: str, project_id: str) -> None:
+def run_langchain_style(client: OptimaClient, project_id: str) -> None:
     trace_id = str(uuid.uuid4())
-    t = SandboxTracer(client, tenant_id, project_id, trace_id, "langchain-agent")
+    t = SandboxTracer(client, project_id, trace_id, "langchain-agent")
 
     print(f"[langchain-style] starting trace {trace_id}")
 

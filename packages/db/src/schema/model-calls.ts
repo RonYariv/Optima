@@ -19,7 +19,6 @@ export const modelCalls = pgTable(
     stepId: text('step_id')
       .notNull()
       .references(() => traceSteps.id),
-    tenantId: text('tenant_id').notNull(),
     modelProvider: modelProviderEnum('model_provider').notNull(),
     modelName: text('model_name').notNull(),
     inputTokens: integer('input_tokens').notNull(),
@@ -31,9 +30,8 @@ export const modelCalls = pgTable(
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
-    index('model_calls_tenant_created_idx').on(t.tenantId, t.createdAt),
     index('model_calls_trace_id_idx').on(t.traceId),
-    index('model_calls_tenant_model_idx').on(t.tenantId, t.modelName),
+    index('model_calls_model_name_idx').on(t.modelName),
   ],
 );
 

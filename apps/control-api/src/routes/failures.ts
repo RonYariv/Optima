@@ -24,7 +24,7 @@ export function buildFailureRoutes(db: DbClient) {
 
       const cursorData = cursor ? decodeCursor(cursor) : null;
 
-      const conditions = [eq(failureEvents.tenantId, request.tenantId)];
+      const conditions = [];
       if (severity) conditions.push(eq(failureEvents.severity, severity));
       if (category) conditions.push(eq(failureEvents.category, category));
       if (from) conditions.push(gte(failureEvents.createdAt, new Date(from)));

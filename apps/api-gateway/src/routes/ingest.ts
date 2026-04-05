@@ -1,4 +1,4 @@
-import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import type { FastifyInstance, FastifyReply } from 'fastify';
 import {
   ModelCallIngestSchema,
   ToolCallIngestSchema,
@@ -19,13 +19,12 @@ interface SafeParser<T> {
 }
 
 /**
- * Validate body with schema and verify tenantId ownership (CODE-2).
- * Sends 422/403 and returns null on failure so the caller can early-return.
+ * Validate body with schema (CODE-2).
+ * Sends 422 and returns null on failure so the caller can early-return.
  */
-function parseAndAuthorize<T extends { tenantId: string }>(
+function parseBody<T>(
   schema: SafeParser<T>,
   body: unknown,
-  request: FastifyRequest,
   reply: FastifyReply,
 ): T | null {
   const parsed = schema.safeParse(body);
@@ -35,10 +34,6 @@ function parseAndAuthorize<T extends { tenantId: string }>(
       message: 'Invalid payload',
       issues: parsed.error.issues,
     });
-    return null;
-  }
-  if (parsed.data.tenantId !== request.tenantId) {
-    reply.code(403).send({ error: 'Forbidden', message: 'tenantId mismatch' });
     return null;
   }
   return parsed.data;
@@ -62,7 +57,7 @@ export function buildIngestRoutes(adapter: IProviderAdapter) {
     app.post<{ Body: ModelCallIngest }>(
       '/v1/ingest/model-call',
       async (request, reply) => {
-        const data = parseAndAuthorize(ModelCallIngestSchema, request.body, request, reply);
+        const data = parseBody(ModelCallIngestSchema, request.body, reply);
         if (!data) return;
 
         // Forward to provider
@@ -112,7 +107,7 @@ export function buildIngestRoutes(adapter: IProviderAdapter) {
     app.post<{ Body: ToolCallIngest }>(
       '/v1/ingest/tool-call',
       async (request, reply) => {
-        const data = parseAndAuthorize(ToolCallIngestSchema, request.body, request, reply);
+        const data = parseBody(ToolCallIngestSchema, request.body, reply);
         if (!data) return;
 
         if (app.queues) {
@@ -135,7 +130,7 @@ export function buildIngestRoutes(adapter: IProviderAdapter) {
     app.post<{ Body: AuditEventIngest }>(
       '/v1/ingest/audit-event',
       async (request, reply) => {
-        const data = parseAndAuthorize(AuditEventIngestSchema, request.body, request, reply);
+        const data = parseBody(AuditEventIngestSchema, request.body, reply);
         if (!data) return;
 
         if (app.queues) {

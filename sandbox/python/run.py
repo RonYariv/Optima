@@ -25,7 +25,6 @@ from scenarios.langchain_style import run_langchain_style  # noqa: E402
 
 OPTIMA_URL = os.environ.get("OPTIMA_URL", "http://localhost:3000")
 OPTIMA_TOKEN = os.environ.get("OPTIMA_TOKEN", "")
-TENANT_ID = os.environ.get("TENANT_ID", "sandbox")
 PROJECT_ID = os.environ.get("PROJECT_ID", "demo")
 
 if not OPTIMA_TOKEN:
@@ -38,14 +37,13 @@ scenario = sys.argv[1] if len(sys.argv) > 1 else "all"
 
 print(f"\n=== Optima Python Sandbox ===")
 print(f"URL:      {OPTIMA_URL}")
-print(f"Tenant:   {TENANT_ID}")
 print(f"Project:  {PROJECT_ID}")
 print(f"Scenario: {scenario}\n")
 
 if scenario in ("all", "agentic"):
-    run_agentic_style(client, TENANT_ID, PROJECT_ID)
+    run_agentic_style(client, PROJECT_ID)
 
 if scenario in ("all", "langchain"):
-    run_langchain_style(client, TENANT_ID, PROJECT_ID)
+    run_langchain_style(client, PROJECT_ID)
 
 print("\nPython sandbox complete.")

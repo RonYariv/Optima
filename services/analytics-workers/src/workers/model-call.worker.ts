@@ -24,7 +24,6 @@ export class ModelCallWorker {
     // 1. Upsert trace (running state — will be updated by final step)
     await this.traceRepo.upsertTrace({
       id: data.traceId,
-      tenantId: data.tenantId,
       projectId: data.projectId,
       agentId: data.agentId,
       status: 'running',
@@ -37,7 +36,6 @@ export class ModelCallWorker {
     await this.traceRepo.upsertStep({
       id: data.stepId,
       traceId: data.traceId,
-      tenantId: data.tenantId,
       stepIndex: data.stepIndex,
       agentId: data.agentId,
       type: 'model',
@@ -59,7 +57,6 @@ export class ModelCallWorker {
       id: data.stepId,
       traceId: data.traceId,
       stepId: data.stepId,
-      tenantId: data.tenantId,
       modelProvider: data.modelProvider,
       modelName: data.modelName,
       inputTokens: data.inputTokens,

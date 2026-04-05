@@ -10,15 +10,14 @@ function sleep(ms: number) {
 
 export async function runMultiAgentHandoff(
   client: OptimaClient,
-  tenantId: string,
   projectId: string,
 ): Promise<void> {
   const traceId = makeTraceId();
 
   // Three tracers share the same traceId but different agentIds
-  const orchestrator = createSandboxTracer(client, tenantId, projectId, traceId, 'orchestrator');
-  const researcher = createSandboxTracer(client, tenantId, projectId, traceId, 'researcher');
-  const writer = createSandboxTracer(client, tenantId, projectId, traceId, 'writer');
+  const orchestrator = createSandboxTracer(client, projectId, traceId, 'orchestrator');
+  const researcher = createSandboxTracer(client, projectId, traceId, 'researcher');
+  const writer = createSandboxTracer(client, projectId, traceId, 'writer');
 
   console.log(`[multi-agent-handoff] starting trace ${traceId}`);
 

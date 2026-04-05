@@ -1,13 +1,10 @@
-import { eq, and, sql } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import type { DbClient } from '../client.js';
 import { traces, traceSteps } from '../schema/index.js';
 import type { NewTrace, NewTraceStep } from '../schema/index.js';
 
 /**
  * TraceRepository — owns all reads/writes for traces and trace_steps.
- *
- * All methods are tenant-scoped: every query includes tenantId to prevent
- * cross-tenant data access at the repository layer.
  */
 export class TraceRepository {
   constructor(private readonly db: DbClient) {}
@@ -51,17 +48,17 @@ export class TraceRepository {
   }
 
   /** @internal Used only in integration tests — routes use fetchTraceWithSteps directly. */
-  async findById(tenantId: string, traceId: string) {
+  async findById(traceId: string) {
     return this.db.query.traces.findFirst({
-      where: and(eq(traces.id, traceId), eq(traces.tenantId, tenantId)),
+      where: eq(traces.id, traceId),
       with: { steps: true },
     });
   }
 
   /** @internal Used only in integration tests. */
-  async findStepById(tenantId: string, stepId: string) {
+  async findStepById(stepId: string) {
     return this.db.query.traceSteps.findFirst({
-      where: and(eq(traceSteps.id, stepId), eq(traceSteps.tenantId, tenantId)),
+      where: eq(traceSteps.id, stepId),
     });
   }
 }

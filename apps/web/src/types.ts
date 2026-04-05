@@ -68,7 +68,6 @@ export interface PaginatedResponse<T> {
 export interface AuditEvent {
   id: string
   traceId: string
-  tenantId: string
   sequenceNo: number
   kind: AuditEventKind
   actorId?: string | null

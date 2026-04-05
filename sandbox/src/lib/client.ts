@@ -10,7 +10,7 @@ function nextSeq(traceId: string): number {
   return n;
 }
 
-export type EventFields = Omit<AuditEventPayload, 'tenantId' | 'projectId' | 'traceId' | 'agentId' | 'sequenceNo' | 'occurredAt' | 'kind'>;
+export type EventFields = Omit<AuditEventPayload, 'projectId' | 'traceId' | 'agentId' | 'sequenceNo' | 'occurredAt' | 'kind'>;
 
 export interface SandboxTracer {
   event(kind: AuditEventPayload['kind'], fields?: EventFields): Promise<void>;
@@ -19,7 +19,6 @@ export interface SandboxTracer {
 
 export function createSandboxTracer(
   client: OptimaClient,
-  tenantId: string,
   projectId: string,
   traceId: string,
   agentId: string,
@@ -30,7 +29,6 @@ export function createSandboxTracer(
       const now = new Date().toISOString();
 
       const auditPromise = client.ingest.auditEvent({
-        tenantId,
         projectId,
         traceId,
         agentId,
@@ -52,7 +50,6 @@ export function createSandboxTracer(
         await Promise.all([
           auditPromise,
           client.ingest.modelCall({
-            tenantId,
             projectId,
             traceId,
             stepId: randomUUID(),
@@ -77,7 +74,6 @@ export function createSandboxTracer(
         await Promise.all([
           auditPromise,
           client.ingest.toolCall({
-            tenantId,
             projectId,
             traceId,
             stepId: randomUUID(),

@@ -27,7 +27,6 @@ export const failureEvents = pgTable(
     stepId: text('step_id')
       .notNull()
       .references(() => traceSteps.id),
-    tenantId: text('tenant_id').notNull(),
     severity: failureSeverityEnum('severity').notNull(),
     category: failureCategoryEnum('category').notNull(),
     reason: text('reason').notNull(),
@@ -37,7 +36,6 @@ export const failureEvents = pgTable(
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
-    index('failure_events_tenant_created_idx').on(t.tenantId, t.createdAt),
     index('failure_events_trace_id_idx').on(t.traceId),
   ],
 );

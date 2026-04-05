@@ -10,7 +10,6 @@ export const traceSteps = pgTable(
     traceId: text('trace_id')
       .notNull()
       .references(() => traces.id),
-    tenantId: text('tenant_id').notNull(),
     stepIndex: integer('step_index').notNull(),
     agentId: text('agent_id').notNull(),
     type: stepTypeEnum('type').notNull(),
@@ -20,7 +19,6 @@ export const traceSteps = pgTable(
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
-    index('trace_steps_tenant_created_idx').on(t.tenantId, t.createdAt),
     index('trace_steps_trace_id_idx').on(t.traceId),
   ],
 );

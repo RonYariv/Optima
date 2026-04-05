@@ -30,14 +30,13 @@ const TraceIdParamSchema = z.object({ traceId: z.string().min(1).max(128) });
 async function fetchTraceWithSteps(
   db: DbClient,
   traceId: string,
-  tenantId: string,
 ): Promise<TraceWithSteps | null> {
   // Fetch trace and steps concurrently — steps only need traceId (already known)
   const [[trace], steps] = await Promise.all([
     db
       .select()
       .from(traces)
-      .where(and(eq(traces.id, traceId), eq(traces.tenantId, tenantId)))
+      .where(eq(traces.id, traceId))
       .limit(1),
     db
       .select()
@@ -97,11 +96,10 @@ export function buildTraceRoutes(db: DbClient) {
         return reply.code(422).send({ error: 'InvalidQuery', issues: q.error.issues });
       }
       const { projectId, status, from, to, limit, cursor } = q.data;
-      const tenantId = request.tenantId;
 
       const cursorData = cursor ? decodeCursor(cursor) : null;
 
-      const conditions = [eq(traces.tenantId, tenantId)];
+      const conditions = [];
       if (projectId) conditions.push(eq(traces.projectId, projectId));
       if (status) conditions.push(eq(traces.status, status));
       if (from) conditions.push(gte(traces.createdAt, new Date(from)));
@@ -139,7 +137,7 @@ export function buildTraceRoutes(db: DbClient) {
       const p = TraceIdParamSchema.safeParse(request.params);
       if (!p.success) return reply.code(400).send({ error: 'InvalidParam' });
       const { traceId } = p.data;
-      const raw = await fetchTraceWithSteps(db, traceId, request.tenantId);
+      const raw = await fetchTraceWithSteps(db, traceId);
       if (!raw) return reply.code(404).send({ error: 'NotFound' });
       const trace = {
         ...raw,
@@ -154,7 +152,7 @@ export function buildTraceRoutes(db: DbClient) {
       const p = TraceIdParamSchema.safeParse(request.params);
       if (!p.success) return reply.code(400).send({ error: 'InvalidParam' });
       const { traceId } = p.data;
-      const trace = await fetchTraceWithSteps(db, traceId, request.tenantId);
+      const trace = await fetchTraceWithSteps(db, traceId);
       if (!trace) return reply.code(404).send({ error: 'NotFound' });
       return reply.send(buildTraceGraph(trace));
     });
@@ -164,13 +162,12 @@ export function buildTraceRoutes(db: DbClient) {
       const p = TraceIdParamSchema.safeParse(request.params);
       if (!p.success) return reply.code(400).send({ error: 'InvalidParam' });
       const { traceId } = p.data;
-      const tenantId = request.tenantId;
 
-      // Verify the trace belongs to this tenant before returning events
+      // Verify the trace exists before returning events
       const [trace] = await db
         .select({ id: traces.id })
         .from(traces)
-        .where(and(eq(traces.id, traceId), eq(traces.tenantId, tenantId)))
+        .where(eq(traces.id, traceId))
         .limit(1);
 
       if (!trace) return reply.code(404).send({ error: 'NotFound' });
@@ -178,7 +175,7 @@ export function buildTraceRoutes(db: DbClient) {
       const events: AuditEvent[] = await db
         .select()
         .from(auditEvents)
-        .where(and(eq(auditEvents.traceId, traceId), eq(auditEvents.tenantId, tenantId)))
+        .where(eq(auditEvents.traceId, traceId))
         .orderBy(asc(auditEvents.sequenceNo));
 
       return reply.send({ data: events });

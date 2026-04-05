@@ -10,11 +10,10 @@ function sleep(ms: number) {
 
 export async function runResearchBot(
   client: OptimaClient,
-  tenantId: string,
   projectId: string,
 ): Promise<void> {
   const traceId = makeTraceId();
-  const t = createSandboxTracer(client, tenantId, projectId, traceId, 'research-orchestrator');
+  const t = createSandboxTracer(client, projectId, traceId, 'research-orchestrator');
 
   console.log(`[research-bot] starting trace ${traceId}`);
 

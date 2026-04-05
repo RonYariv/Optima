@@ -19,7 +19,6 @@ export type AuditEventKind =
   | 'custom';
 
 export interface AuditEventPayload {
-  tenantId: string;
   projectId: string;
   traceId: string;
   agentId: string;
@@ -38,7 +37,6 @@ export interface AuditEventPayload {
 }
 
 export interface ModelCallPayload {
-  tenantId: string;
   projectId: string;
   traceId: string;
   stepId: string;
@@ -56,7 +54,6 @@ export interface ModelCallPayload {
 }
 
 export interface ToolCallPayload {
-  tenantId: string;
   projectId: string;
   traceId: string;
   stepId: string;

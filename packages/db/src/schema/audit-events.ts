@@ -19,7 +19,6 @@ export const auditEvents = pgTable(
     traceId: text('trace_id')
       .notNull()
       .references(() => traces.id),
-    tenantId: text('tenant_id').notNull(),
     sequenceNo: integer('sequence_no').notNull(),
     kind: auditEventKindEnum('kind').notNull(),
     actorId: text('actor_id'),
@@ -36,7 +35,6 @@ export const auditEvents = pgTable(
   },
   (t) => [
     index('audit_events_trace_id_idx').on(t.traceId),
-    index('audit_events_tenant_created_idx').on(t.tenantId, t.createdAt),
     index('audit_events_trace_seq_idx').on(t.traceId, t.sequenceNo),
     index('audit_events_step_id_idx').on(t.stepId),
   ],

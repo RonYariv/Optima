@@ -18,12 +18,12 @@ def _sleep(ms: float) -> None:
     time.sleep(ms / 1000)
 
 
-def run_agentic_style(client: OptimaClient, tenant_id: str, project_id: str) -> None:
+def run_agentic_style(client: OptimaClient, project_id: str) -> None:
     trace_id = str(uuid.uuid4())
 
-    orchestrator = SandboxTracer(client, tenant_id, project_id, trace_id, "orchestrator")
-    researcher = SandboxTracer(client, tenant_id, project_id, trace_id, "researcher")
-    writer = SandboxTracer(client, tenant_id, project_id, trace_id, "writer")
+    orchestrator = SandboxTracer(client, project_id, trace_id, "orchestrator")
+    researcher = SandboxTracer(client, project_id, trace_id, "researcher")
+    writer = SandboxTracer(client, project_id, trace_id, "writer")
 
     print(f"[agentic-style] starting trace {trace_id}")
 

@@ -9,11 +9,10 @@ function sleep(ms: number) {
 
 export async function runCodingAssistant(
   client: OptimaClient,
-  tenantId: string,
   projectId: string,
 ): Promise<void> {
   const traceId = makeTraceId();
-  const t = createSandboxTracer(client, tenantId, projectId, traceId, 'code-assistant');
+  const t = createSandboxTracer(client, projectId, traceId, 'code-assistant');
 
   console.log(`[coding-assistant] starting trace ${traceId}`);
 
