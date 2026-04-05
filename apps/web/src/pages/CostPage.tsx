@@ -132,7 +132,7 @@ export default function CostPage() {
               >
                 <td className="px-4 py-3 text-white">{item.key}</td>
                 <td className="px-4 py-3" style={{ color: 'var(--color-text)' }}>
-                  ${item.costUsd.toFixed(4)}
+                  ${Number(item.costUsd).toFixed(4)}
                 </td>
                 <td className="px-4 py-3" style={{ color: 'var(--color-muted)' }}>
                   {item.tokenCount.toLocaleString()}

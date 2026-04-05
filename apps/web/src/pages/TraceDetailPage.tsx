@@ -219,7 +219,7 @@ export default function TraceDetailPage() {
           <span>Agent: <span className="text-white">{trace.agentId}</span></span>
           <span>Started: <span className="text-white">{new Date(trace.startedAt).toLocaleString()}</span></span>
           {trace.totalCostUsd != null && (
-            <span>Cost: <span className="text-white">${trace.totalCostUsd.toFixed(4)}</span></span>
+            <span>Cost: <span className="text-white">${Number(trace.totalCostUsd).toFixed(4)}</span></span>
           )}
         </div>
       )}
@@ -304,7 +304,7 @@ export default function TraceDetailPage() {
                   <Row label="Latency" value={`${selectedNode.data.latencyMs} ms`} />
                 )}
                 {selectedNode.data.costUsd != null && (
-                  <Row label="Cost" value={`$${selectedNode.data.costUsd.toFixed(4)}`} />
+                  <Row label="Cost" value={`$${Number(selectedNode.data.costUsd).toFixed(4)}`} />
                 )}
                 {selectedNode.data.inputTokens != null && (
                   <Row label="Tokens in" value={String(selectedNode.data.inputTokens)} />

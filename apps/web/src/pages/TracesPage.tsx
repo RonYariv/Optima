@@ -88,7 +88,7 @@ export default function TracesPage() {
                   {new Date(trace.startedAt).toLocaleString()}
                 </td>
                 <td className="px-4 py-3 text-xs" style={{ color: 'var(--color-muted)' }}>
-                  {trace.totalCostUsd != null ? `$${trace.totalCostUsd.toFixed(4)}` : '—'}
+                  {trace.totalCostUsd != null ? `$${Number(trace.totalCostUsd).toFixed(4)}` : '—'}
                 </td>
               </tr>
             ))}
