@@ -60,7 +60,8 @@ export function buildTraceGraph(trace: TraceWithSteps): {
           latencyMs: mc?.latencyMs ?? null,
           inputTokens: mc?.inputTokens ?? null,
           outputTokens: mc?.outputTokens ?? null,
-          costUsd: mc?.costUsd ?? null,
+          // Drizzle returns numeric columns as strings — convert to number for JSON
+          costUsd: mc?.costUsd != null ? Number(mc.costUsd) : null,
           failureReason: failure?.reason ?? null,
         },
       });

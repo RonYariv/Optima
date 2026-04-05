@@ -10,7 +10,7 @@ function nextSeq(traceId: string): number {
   return n;
 }
 
-export type EventFields = Omit<AuditEventPayload, 'tenantId' | 'projectId' | 'traceId' | 'agentId' | 'sequenceNo' | 'occurredAt'>;
+export type EventFields = Omit<AuditEventPayload, 'tenantId' | 'projectId' | 'traceId' | 'agentId' | 'sequenceNo' | 'occurredAt' | 'kind'>;
 
 export interface SandboxTracer {
   event(kind: AuditEventPayload['kind'], fields?: EventFields): Promise<void>;
@@ -65,6 +65,30 @@ export function createSandboxTracer(
             requestAt: now,
             responseAt: now,
             metadata: meta,
+          }),
+        ]);
+      } else if (kind === 'tool_call') {
+        // Fire a tool-call ingest so the ToolCallWorker creates trace steps and failure_events
+        const toolName  = fields.name ?? 'unknown';
+        const success   = fields.success ?? true;
+        const latencyMs = typeof fields.latencyMs === 'number' ? fields.latencyMs : 0;
+        const errorType = fields.error?.type;
+
+        await Promise.all([
+          auditPromise,
+          client.ingest.toolCall({
+            tenantId,
+            projectId,
+            traceId,
+            stepId: randomUUID(),
+            agentId,
+            toolName,
+            success,
+            latencyMs,
+            ...(errorType ? { errorType } : {}),
+            requestAt: now,
+            responseAt: now,
+            metadata: {},
           }),
         ]);
       } else {

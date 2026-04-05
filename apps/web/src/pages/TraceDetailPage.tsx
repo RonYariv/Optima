@@ -271,6 +271,10 @@ export default function TraceDetailPage() {
               <div className="flex items-center justify-center h-full" style={{ color: 'var(--color-muted)' }}>
                 Loading graph…
               </div>
+            ) : graphQuery.isError ? (
+              <div className="flex items-center justify-center h-full text-red-400 text-sm">
+                Failed to load graph data
+              </div>
             ) : nodes.length === 0 ? (
               <div className="flex items-center justify-center h-full" style={{ color: 'var(--color-muted)' }}>
                 No graph data available

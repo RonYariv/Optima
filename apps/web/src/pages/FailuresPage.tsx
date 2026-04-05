@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import { Link } from 'react-router-dom'
 import { api } from '../lib/api'
 import SeverityBadge from '../components/SeverityBadge'
 import PaginationFooter from '../components/PaginationFooter'
@@ -82,7 +83,12 @@ export default function FailuresPage() {
                   {failure.reason}
                 </td>
                 <td className="px-4 py-3 font-mono text-xs" style={{ color: 'var(--color-muted)' }}>
-                  {failure.traceId.slice(0, 8)}…
+                  <Link
+                    to={`/traces/${failure.traceId}`}
+                    className="hover:text-sky-400 transition-colors"
+                  >
+                    {failure.traceId.slice(0, 8)}…
+                  </Link>
                 </td>
                 <td className="px-4 py-3 text-xs" style={{ color: 'var(--color-muted)' }}>
                   {new Date(failure.occurredAt).toLocaleString()}
