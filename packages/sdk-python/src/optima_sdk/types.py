@@ -86,6 +86,7 @@ class AuditEventPayload:
     sequence_no: int
     kind: AuditEventKind
     occurred_at: str  # ISO 8601
+    step_id: Optional[str] = None
     actor_id: Optional[str] = None
     name: Optional[str] = None
     input: Optional[Dict[str, Any]] = None
@@ -105,6 +106,8 @@ class AuditEventPayload:
             "occurredAt": self.occurred_at,
             "metadata": self.metadata,
         }
+        if self.step_id is not None:
+            d["stepId"] = self.step_id
         if self.actor_id is not None:
             d["actorId"] = self.actor_id
         if self.name is not None:

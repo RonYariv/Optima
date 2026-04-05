@@ -30,7 +30,7 @@ class SandboxTracer:
         return self._trace_id
 
     def _now(self) -> str:
-        return datetime.now(timezone.utc).isoformat()
+        return datetime.now(timezone.utc).isoformat(timespec='milliseconds').replace('+00:00', 'Z')
 
     def event(
         self,

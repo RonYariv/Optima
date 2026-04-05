@@ -157,6 +157,11 @@ export function buildTraceRoutes(db: DbClient) {
       const { traceId } = p.data;
       const raw = await fetchTraceWithSteps(db, traceId);
       if (!raw) return reply.code(404).send({ error: 'NotFound' });
+      const events = await db
+        .select()
+        .from(auditEvents)
+        .where(eq(auditEvents.traceId, traceId))
+        .orderBy(asc(auditEvents.sequenceNo));
       const trace = {
         ...raw,
         totalCostUsd: raw.totalCostUsd != null ? Number(raw.totalCostUsd) : null,
@@ -164,7 +169,7 @@ export function buildTraceRoutes(db: DbClient) {
       };
       return reply.send({
         ...trace,
-        graph: buildTraceGraph(raw),
+        graph: buildTraceGraph(raw, events),
       });
     });
 

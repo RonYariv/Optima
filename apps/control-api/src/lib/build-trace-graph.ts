@@ -1,4 +1,4 @@
-import type { Trace, TraceStep, ModelCall, ToolCall, FailureEvent } from '@agent-optima/db';
+import type { Trace, TraceStep, ModelCall, ToolCall, FailureEvent, AuditEvent } from '@agent-optima/db';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -28,7 +28,10 @@ const GRAPH_STEP_HEIGHT_PX = 120;
  * Converts a fully-hydrated trace into a React Flow–compatible node/edge graph
  * (CODE-4). Pure function — no DB I/O, easily unit-testable.
  */
-export function buildTraceGraph(trace: TraceWithSteps): {
+export function buildTraceGraph(
+  trace: TraceWithSteps,
+  auditLog: AuditEvent[] = [],
+): {
   nodes: RFNode[];
   edges: RFEdge[];
 } {
@@ -85,6 +88,41 @@ export function buildTraceGraph(trace: TraceWithSteps): {
     const sourceId = i === 0 ? rootId : (trace.steps[i - 1] as StepWithDetails).id;
     edges.push({ id: `e-${sourceId}-${step.id}`, source: sourceId, target: step.id });
   });
+
+  // For traces that were captured via audit events only (no trace_steps/model_calls/tool_calls rows),
+  // synthesize a useful graph from ordered audit events so the UI is not empty.
+  if (trace.steps.length === 0) {
+    const graphEvents = auditLog.filter((ev) =>
+      ev.kind === 'model_call' || ev.kind === 'tool_call' || ev.kind === 'mcp_call',
+    );
+
+    graphEvents.forEach((ev, i) => {
+      const nodeId = `audit-${ev.id}`;
+      const yPos = (i + 1) * GRAPH_STEP_HEIGHT_PX;
+      const isModel = ev.kind === 'model_call';
+
+      nodes.push({
+        id: nodeId,
+        type: isModel ? 'model_call' : 'tool_call',
+        position: { x: 0, y: yPos },
+        data: {
+          label: ev.name ?? ev.actorId ?? ev.kind,
+          status: ev.success === false ? 'failed' : 'success',
+          latencyMs: ev.latencyMs ?? null,
+          success: ev.success ?? null,
+          errorType: ev.error && typeof ev.error === 'object' && 'type' in ev.error
+            ? (ev.error.type as string | null)
+            : null,
+          failureReason: ev.error && typeof ev.error === 'object' && 'message' in ev.error
+            ? (ev.error.message as string | null)
+            : null,
+        },
+      });
+
+      const sourceId = i === 0 ? rootId : `audit-${graphEvents[i - 1]!.id}`;
+      edges.push({ id: `e-${sourceId}-${nodeId}`, source: sourceId, target: nodeId });
+    });
+  }
 
   return { nodes, edges };
 }

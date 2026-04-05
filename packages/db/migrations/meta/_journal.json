@@ -43,6 +43,20 @@
       "when": 1775840000000,
       "tag": "0005_perf_and_schema",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1775361480000,
+      "tag": "0006_drop_tenant_id",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1775377800000,
+      "tag": "0007_trace_detail_indexes",
+      "breakpoints": true
     }
   ]
 }

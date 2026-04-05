@@ -2,7 +2,6 @@ import type {
   PaginatedResponse,
   Trace,
   TraceDetail,
-  TraceGraph,
   Failure,
   CostSummaryResponse,
   TraceStatus,
@@ -70,9 +69,6 @@ export const api = {
 
     get: (traceId: string) =>
       request<TraceDetail>(`/v1/traces/${traceId}`),
-
-    graph: (traceId: string) =>
-      request<TraceGraph>(`/v1/traces/${traceId}/graph`),
 
     auditLog: (traceId: string) =>
       request<{ data: AuditEvent[] }>(`/v1/traces/${traceId}/audit-log`),

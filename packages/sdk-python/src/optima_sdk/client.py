@@ -83,6 +83,7 @@ class _SyncIngest:
         sequence_no: int,
         kind: str,
         occurred_at: str,
+        step_id: Optional[str] = None,
         actor_id: Optional[str] = None,
         name: Optional[str] = None,
         input: Optional[Dict[str, Any]] = None,
@@ -99,6 +100,7 @@ class _SyncIngest:
             sequence_no=sequence_no,
             kind=kind,  # type: ignore[arg-type]
             occurred_at=occurred_at,
+            step_id=step_id,
             actor_id=actor_id,
             name=name,
             input=input,
