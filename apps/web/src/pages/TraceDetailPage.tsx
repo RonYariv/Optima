@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import {
@@ -6,8 +6,6 @@ import {
   Background,
   Controls,
   MiniMap,
-  useNodesState,
-  useEdgesState,
   type Node,
   type Edge,
   type NodeMouseHandler,
@@ -180,19 +178,6 @@ export default function TraceDetailPage() {
     enabled: !!traceId && tab === 'audit-log',
   })
 
-  const initialNodes = (graphQuery.data?.nodes ?? []) as AppNode[]
-  const initialEdges = (graphQuery.data?.edges ?? []) as Edge[]
-
-  const [nodes, setNodes, onNodesChange] = useNodesState<AppNode>(initialNodes)
-  const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>(initialEdges)
-
-  // Sync React Flow state when graph query data refreshes (PERF-3)
-  useEffect(() => {
-    setNodes((graphQuery.data?.nodes ?? []) as AppNode[])
-    setEdges((graphQuery.data?.edges ?? []) as Edge[])
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [graphQuery.data])
-
   const onNodeClick = useCallback<NodeMouseHandler<AppNode>>((_evt, node) => {
     setSelectedNode(node)
   }, [])
@@ -275,16 +260,15 @@ export default function TraceDetailPage() {
               <div className="flex items-center justify-center h-full text-red-400 text-sm">
                 Failed to load graph data
               </div>
-            ) : nodes.length === 0 ? (
+            ) : !graphQuery.data?.nodes?.length ? (
               <div className="flex items-center justify-center h-full" style={{ color: 'var(--color-muted)' }}>
                 No graph data available
               </div>
             ) : (
               <ReactFlow
-                nodes={nodes}
-                edges={edges}
-                onNodesChange={onNodesChange}
-                onEdgesChange={onEdgesChange}
+                key={traceId}
+                defaultNodes={graphQuery.data.nodes as AppNode[]}
+                defaultEdges={graphQuery.data.edges as Edge[]}
                 onNodeClick={onNodeClick}
                 nodeTypes={nodeTypes}
                 fitView

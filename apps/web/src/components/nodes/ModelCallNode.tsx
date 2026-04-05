@@ -20,7 +20,7 @@ export default function ModelCallNode({ data, selected }: Props) {
         <div className="text-slate-400">{data.latencyMs} ms</div>
       )}
       {data.costUsd != null && (
-        <div className="text-slate-400">${data.costUsd.toFixed(4)}</div>
+        <div className="text-slate-400">${Number(data.costUsd).toFixed(4)}</div>
       )}
       {data.inputTokens != null && (
         <div className="text-slate-400">
