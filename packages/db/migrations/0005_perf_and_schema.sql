@@ -6,6 +6,6 @@ ALTER TABLE "traces" ADD COLUMN IF NOT EXISTS "total_tokens" integer DEFAULT 0;-
 CREATE INDEX IF NOT EXISTS "model_calls_tenant_model_idx" ON "model_calls" USING btree ("tenant_id","model_name");--> statement-breakpoint
 -- SCHEMA-5: optional step_id on audit_events for step-level event correlation
 ALTER TABLE "audit_events" ADD COLUMN IF NOT EXISTS "step_id" text;--> statement-breakpoint
-ALTER TABLE "audit_events" ADD CONSTRAINT IF NOT EXISTS "audit_events_step_id_trace_steps_id_fk"
+ALTER TABLE "audit_events" ADD CONSTRAINT "audit_events_step_id_trace_steps_id_fk"
   FOREIGN KEY ("step_id") REFERENCES "public"."trace_steps"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "audit_events_step_id_idx" ON "audit_events" USING btree ("step_id");

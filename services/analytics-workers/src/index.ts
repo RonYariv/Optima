@@ -15,7 +15,7 @@ import { ModelCallIngestSchema, ToolCallIngestSchema, AuditEventIngestSchema } f
 import { ModelCallWorker } from './workers/model-call.worker.js';
 import { ToolCallWorker } from './workers/tool-call.worker.js';
 import { AuditEventWorker } from './workers/audit-event.worker.js';
-import { StaticPricingService } from './pricing.js';
+import { LiteLLMPricingService } from './pricing.js';
 
 const QUEUE_MODEL_CALL = 'model-call-ingest';
 const QUEUE_TOOL_CALL = 'tool-call-ingest';
@@ -37,7 +37,8 @@ async function main() {
   const toolCallRepo = new ToolCallRepository(db);
   const failureRepo = new FailureEventRepository(db);
   const auditEventRepo = new AuditEventRepository(db);
-  const pricing = new StaticPricingService();
+  const pricing = new LiteLLMPricingService();
+  await pricing.init();
 
   // ── Queue (PGMQ via separate postgres-js connection) ──────────────────────
   // PGMQ uses a dedicated connection for queue operations.

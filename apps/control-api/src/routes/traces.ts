@@ -125,7 +125,13 @@ export function buildTraceRoutes(db: DbClient) {
         .orderBy(desc(traces.createdAt), desc(traces.id))
         .limit(limit + 1);
 
-      return reply.send(buildPage(rows, limit));
+      const normalized = rows.map((r) => ({
+        ...r,
+        totalCostUsd: r.totalCostUsd != null ? Number(r.totalCostUsd) : null,
+        totalTokens:  r.totalTokens  != null ? Number(r.totalTokens)  : null,
+      }));
+
+      return reply.send(buildPage(normalized, limit));
     });
 
     // GET /v1/traces/:traceId
@@ -133,8 +139,13 @@ export function buildTraceRoutes(db: DbClient) {
       const p = TraceIdParamSchema.safeParse(request.params);
       if (!p.success) return reply.code(400).send({ error: 'InvalidParam' });
       const { traceId } = p.data;
-      const trace = await fetchTraceWithSteps(db, traceId, request.tenantId);
-      if (!trace) return reply.code(404).send({ error: 'NotFound' });
+      const raw = await fetchTraceWithSteps(db, traceId, request.tenantId);
+      if (!raw) return reply.code(404).send({ error: 'NotFound' });
+      const trace = {
+        ...raw,
+        totalCostUsd: raw.totalCostUsd != null ? Number(raw.totalCostUsd) : null,
+        totalTokens:  raw.totalTokens  != null ? Number(raw.totalTokens)  : null,
+      };
       return reply.send(trace);
     });
 

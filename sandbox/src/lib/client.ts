@@ -1,4 +1,5 @@
-import { OptimaClient, type AuditEventPayload } from '@agent-optima/sdk-node';
+import { OptimaClient, type AuditEventPayload, type ModelProvider } from '@agent-optima/sdk-node';
+import { randomUUID } from 'crypto';
 
 // Sequence counter map — keyed by traceId
 const seqMap = new Map<string, number>();
@@ -26,17 +27,49 @@ export function createSandboxTracer(
   return {
     traceId,
     async event(kind, fields = {}) {
-      await client.ingest.auditEvent({
+      const now = new Date().toISOString();
+
+      const auditPromise = client.ingest.auditEvent({
         tenantId,
         projectId,
         traceId,
         agentId,
         sequenceNo: nextSeq(traceId),
         kind,
-        occurredAt: new Date().toISOString(),
+        occurredAt: now,
         metadata: {},
         ...fields,
       });
+
+      // Also fire a model-call ingest so the analytics worker computes cost
+      if (kind === 'model_call') {
+        const meta = (fields.metadata ?? {}) as Record<string, unknown>;
+        const inputTokens  = typeof meta['inputTokens']  === 'number' ? meta['inputTokens']  : 0;
+        const outputTokens = typeof meta['outputTokens'] === 'number' ? meta['outputTokens'] : 0;
+        const modelName    = fields.name ?? (typeof meta['model'] === 'string' ? meta['model'] : 'unknown');
+        const latencyMs    = typeof fields.latencyMs === 'number' ? fields.latencyMs : 0;
+
+        await Promise.all([
+          auditPromise,
+          client.ingest.modelCall({
+            tenantId,
+            projectId,
+            traceId,
+            stepId: randomUUID(),
+            agentId,
+            modelProvider: 'other' as ModelProvider,
+            modelName,
+            inputTokens,
+            outputTokens,
+            latencyMs,
+            requestAt: now,
+            responseAt: now,
+            metadata: meta,
+          }),
+        ]);
+      } else {
+        await auditPromise;
+      }
     },
   };
 }
