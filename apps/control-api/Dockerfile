@@ -10,7 +10,6 @@ COPY packages/db/package.json                  ./packages/db/
 COPY packages/fastify-auth/package.json        ./packages/fastify-auth/
 COPY packages/queue/package.json               ./packages/queue/
 COPY packages/schemas/package.json             ./packages/schemas/
-COPY packages/sdk-node/package.json            ./packages/sdk-node/
 COPY services/analytics-workers/package.json   ./services/analytics-workers/
 
 RUN npm ci --omit=dev
@@ -27,7 +26,6 @@ COPY packages/db/package.json                  ./packages/db/
 COPY packages/fastify-auth/package.json        ./packages/fastify-auth/
 COPY packages/queue/package.json               ./packages/queue/
 COPY packages/schemas/package.json             ./packages/schemas/
-COPY packages/sdk-node/package.json            ./packages/sdk-node/
 COPY services/analytics-workers/package.json   ./services/analytics-workers/
 
 RUN npm ci
@@ -37,7 +35,6 @@ COPY . .
 RUN npm run build -w @agent-optima/schemas
 RUN npm run build -w @agent-optima/fastify-auth
 RUN npm run build -w @agent-optima/db
-RUN npm run build -w @agent-optima/sdk-node
 RUN npm run build -w @agent-optima/control-api
 
 # ── Stage 3: Runner ───────────────────────────────────────────────────────────
@@ -53,8 +50,6 @@ COPY --from=builder /app/packages/fastify-auth/dist    ./packages/fastify-auth/d
 COPY --from=builder /app/packages/fastify-auth/package.json ./packages/fastify-auth/package.json
 COPY --from=builder /app/packages/db/dist              ./packages/db/dist
 COPY --from=builder /app/packages/db/package.json      ./packages/db/package.json
-COPY --from=builder /app/packages/sdk-node/dist        ./packages/sdk-node/dist
-COPY --from=builder /app/packages/sdk-node/package.json ./packages/sdk-node/package.json
 
 COPY --from=builder /app/apps/control-api/dist         ./apps/control-api/dist
 COPY --from=builder /app/apps/control-api/package.json ./apps/control-api/package.json

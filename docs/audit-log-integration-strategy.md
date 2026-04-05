@@ -115,7 +115,7 @@ The framework's event stream is accessed by iterating `agent.get_events(request_
 
 **Optima adapter:**
 ```python
-from optima_sdk.adapters.agentic_framework import OptimaAgenticListener
+from optima_bridge.adapters.agentic_framework import OptimaAgenticListener
 
 listener = OptimaAgenticListener(
     client=optima_client,
@@ -155,7 +155,7 @@ LangChain exposes `BaseCallbackHandler` with fine-grained hooks:
 
 **Optima adapter:**
 ```python
-from optima_sdk.adapters.langchain import OptimaCallbackHandler
+from optima_bridge.adapters.langchain import OptimaCallbackHandler
 
 handler = OptimaCallbackHandler(
     client=optima_client,
@@ -183,7 +183,7 @@ CrewAI exposes `before_kickoff_callbacks`, `task_callback`, and `step_callback` 
 
 **Optima adapter:**
 ```python
-from optima_sdk.adapters.crewai import optima_crew_hooks
+from optima_bridge.adapters.crewai import optima_crew_hooks
 
 crew = Crew(
     agents=[...],
@@ -228,7 +228,7 @@ const result = await streamText(
 | Vercel AI SDK | TypeScript | `onStepFinish`, `onFinish` |
 | OpenAI Agents SDK | Python | `TracingProcessor` interface (`on_start`/`on_end`) |
 
-> **OpenAI Agents SDK note:** It has its own `Tracing` abstraction (`TracingProcessor`). Optima ships `optima_sdk.adapters.openai_agents.OptimaTracingProcessor` which implements that interface. Not OTEL, not callback-based — it's its own system, so it needs its own adapter.
+> **OpenAI Agents SDK note:** It has its own `Tracing` abstraction (`TracingProcessor`). Optima ships `optima_bridge.adapters.openai_agents.OptimaTracingProcessor` which implements that interface. Not OTEL, not callback-based — it's its own adapter shape.
 
 ---
 
@@ -240,14 +240,14 @@ This is a follow-up feature; documented here for completeness.
 
 ---
 
-## Manual SDK — `OptimaTracer`
+## Manual Bridge Tracer — `OptimaTracer`
 
 The escape hatch for homegrown frameworks or any call that isn't covered by the layers above.
 
 ### Node.js
 
 ```ts
-import { OptimaTracer } from '@agent-optima/sdk-node';
+import { OptimaTracer } from '@agent-optima/bridge-node';
 
 const tracer = new OptimaTracer(client, {
   tenantId: 'acme',
@@ -280,7 +280,7 @@ await tracer.agentEnd('Research Agent', { summary: '...' }, true);
 ### Python
 
 ```python
-from optima_sdk import OptimaTracer
+from optima_bridge import OptimaTracer
 
 tracer = OptimaTracer(
     client=optima_client,
@@ -322,6 +322,6 @@ Everything else (custom framework, partial coverage, homegrown)
 3. **`agentic-framework` adapter** (`packages/adapter-agentic`) — consume event stream, map to audit events
 4. **LangChain adapter** (`packages/adapter-langchain`) — highest user volume
 5. **Vercel AI SDK adapter** (`packages/adapter-vercel-ai`) — highest JS/TS volume
-6. **OptimaTracer** in `sdk-node` + `sdk-python` — manual fallback, also used internally by adapters
+6. **OptimaTracer** in bridge packages (`@agent-optima/bridge-node`, `optima_bridge`) — manual fallback, also used internally by adapters
 7. **CrewAI adapter** + **OpenAI Agents SDK adapter** — follow-on
 8. **MCP proxy** — follow-on

@@ -16,14 +16,19 @@ FIRST STEPS
      Or locally with optima-ctl (packages/cli):
        JWT_SECRET=<your-secret> optima-ctl token generate --tenant my-project
 
-  2. Point your SDK at the gateway:
-       NODE_SDK:
-         import { OptimaClient } from '@agent-optima/sdk-node';
-         const client = new OptimaClient({ baseUrl: 'http://<gateway-svc>:3000', token: '<token>' });
+  2. Point your agent telemetry at the gateway (direct HTTP):
+       NODE_JS:
+         fetch('http://<gateway-svc>:3000/v1/ingest/audit-event', {
+           method: 'POST',
+           headers: { Authorization: 'Bearer <token>', 'Content-Type': 'application/json' },
+           body: JSON.stringify({ projectId: 'sandbox', traceId: '<trace-id>', sequenceNo: 0, kind: 'agent_start' })
+         });
 
-       PYTHON_SDK:
-         from optima_sdk import OptimaClient
-         client = OptimaClient(base_url="http://<gateway-svc>:3000", token="<token>")
+       PYTHON:
+         import httpx
+         httpx.post('http://<gateway-svc>:3000/v1/ingest/audit-event',
+                    headers={'Authorization': 'Bearer <token>'},
+                    json={'projectId': 'sandbox', 'traceId': '<trace-id>', 'sequenceNo': 0, 'kind': 'agent_start'})
 
   3. Open the dashboard (port-forward if no Ingress):
        kubectl port-forward svc/{{ include "agent-optima.fullname" . }}-web {{ .Values.web.service.port }}:{{ .Values.web.service.port }} -n {{ .Release.Namespace }}

@@ -57,8 +57,7 @@ Customer's K8s Cluster
 | ORM / DB | Drizzle ORM + postgres-js, Postgres 16 |
 | Queue | PGMQ (Postgres-native extension) |
 | Frontend | React 19, Vite 8, Tailwind CSS 4, React Flow, Recharts |
-| SDK (Node.js) | Zero-dependency ESM package (`@agent-optima/sdk-node`) |
-| SDK (Python) | Zero-dependency stdlib package (`optima-sdk`, sync + async) |
+| Ingestion integration | Direct HTTP bridge (language-agnostic) |
 | Containerisation | Docker multi-stage builds, docker-compose, Helm (in progress) |
 | Migrations | Drizzle Kit — SQL files committed, applied on `analytics-workers` startup |
 
@@ -119,9 +118,9 @@ All four views are live at http://localhost:5173:
 | **Cost** (`/cost`) | Recharts bar chart + breakdown table; `groupBy=day\|model\|agent` selector |
 | **Token Gate** | Paste JWT on first load; token held in-memory (not localStorage) |
 
-### ✅ SDKs (both functional)
-- **`packages/sdk-node`** — `OptimaClient` with `ingest.modelCall()`, `ingest.toolCall()`, `ingest.auditEvent()`; silent on network errors by default
-- **`packages/sdk-python`** — `OptimaClient` (sync) + `AsyncOptimaClient` (async); zero dependencies (stdlib only)
+### ✅ Bridge-based ingestion
+- **Node.js** — direct HTTP ingest (`/v1/ingest/*`) from framework adapters or manual bridge helpers
+- **Python** — direct HTTP ingest (`/v1/ingest/*`) from framework adapters (MS Agent Framework + LangGraph)
 
 ### ✅ Sandbox harness (`sandbox/`)
 - Mock MCP servers (`mcp-filesystem` on :4010, `mcp-web-search` on :4011) — realistic latency + occasional errors
@@ -192,7 +191,7 @@ Thin adapters for frameworks that do **not** emit OTEL:
 | LangChain | Python | `BaseCallbackHandler` subclass |
 | LlamaIndex | Python | `BaseCallbackHandler` / `Instrumentation` API |
 
-Each adapter will be a separate pip-installable package (`optima-sdk-langchain`, etc.) with a single constructor arg to enable tracing.
+Each adapter is integrated via framework-native hooks and a shared HTTP bridge layer.
 
 ---
 

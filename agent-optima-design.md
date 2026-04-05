@@ -84,8 +84,7 @@ Customer's K8s Cluster
 | ORM / DB | Drizzle ORM + postgres-js, Postgres 16 |
 | Queue | PGMQ (Postgres extension) |
 | Frontend | React 19, Vite 8, Tailwind CSS 4, React Flow, Recharts |
-| SDK (Node.js) | Zero-dependency ESM package (`@agent-optima/sdk-node`) |
-| SDK (Python) | Zero-dependency stdlib package (`optima-sdk`) |
+| Ingestion integration | Direct HTTP bridge (any language) |
 | Containerisation | Docker multi-stage builds, docker-compose, Helm (planned) |
 | Migrations | Drizzle Kit — SQL files committed, applied programmatically |
 
@@ -157,44 +156,37 @@ await optima.ingest.modelCall({
 });
 ```
 
-### Python (sync)
+### Python (sync, direct HTTP)
 
 ```python
-from optima_sdk import OptimaClient
 import os, time, uuid
 from datetime import datetime, timezone
+import httpx
 
-optima = OptimaClient(
-    url=os.environ["OPTIMA_URL"],
-    token=os.environ["OPTIMA_TOKEN"],
-)
+optima_url = os.environ["OPTIMA_URL"]
+optima_token = os.environ["OPTIMA_TOKEN"]
 
 t0 = time.time()
 response = openai_client.chat.completions.create(model="gpt-4o", messages=messages)
 
-optima.ingest.model_call(
-    tenant_id="my-project",
-    project_id="sales-agent",
-    trace_id=ctx.trace_id,
-    step_id=str(uuid.uuid4()),
-    agent_id="sales-agent-v2",
-    model_provider="openai",
-    model_name="gpt-4o",
-    input_tokens=response.usage.prompt_tokens,
-    output_tokens=response.usage.completion_tokens,
-    latency_ms=int((time.time() - t0) * 1000),
-    request_at=datetime.fromtimestamp(t0, tz=timezone.utc).isoformat(),
-    response_at=datetime.now(tz=timezone.utc).isoformat(),
+httpx.post(
+  f"{optima_url}/v1/ingest/model-call",
+  headers={"Authorization": f"Bearer {optima_token}"},
+  json={
+    "projectId": "sales-agent",
+    "traceId": ctx.trace_id,
+    "stepId": str(uuid.uuid4()),
+    "stepIndex": 0,
+    "agentId": "sales-agent-v2",
+    "modelProvider": "openai",
+    "modelName": "gpt-4o",
+    "inputTokens": response.usage.prompt_tokens,
+    "outputTokens": response.usage.completion_tokens,
+    "latencyMs": int((time.time() - t0) * 1000),
+    "requestAt": datetime.fromtimestamp(t0, tz=timezone.utc).isoformat(),
+    "responseAt": datetime.now(tz=timezone.utc).isoformat(),
+  },
 )
-```
-
-### Python (async)
-
-```python
-from optima_sdk import AsyncOptimaClient
-
-optima = AsyncOptimaClient(url=os.environ["OPTIMA_URL"], token=os.environ["OPTIMA_TOKEN"])
-await optima.ingest.model_call(...)
 ```
 
 ---
@@ -287,8 +279,6 @@ packages/
   schemas/           Zod contracts shared across gateway + workers
   db/                Drizzle ORM client + repositories + migrations
   queue/             PGMQ abstraction (IQueue<T> interface)
-  sdk/               Node.js SDK (zero deps, ESM)
-  sdk-python/        Python SDK (zero deps, stdlib only)
 
 services/
   analytics-workers/ PGMQ consumers, cost calc, failure classification
@@ -305,7 +295,7 @@ docker/
 - **At-least-once delivery**: workers ack only after successful DB write.
 - **Graceful shutdown**: `SIGTERM` drains in-flight messages before exit.
 - **Migrations**: auto-applied at workers startup; idempotent via Drizzle migration table.
-- **Silent SDK**: network errors never propagate to the customer's agent process.
+- **Silent bridge**: network errors never propagate to the customer's agent process.
 
 ---
 

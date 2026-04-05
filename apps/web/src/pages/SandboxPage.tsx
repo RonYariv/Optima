@@ -42,6 +42,7 @@ interface AgentMeta {
   id: string
   name: string
   description: string
+  framework: string
 }
 
 interface ChatMessage {
@@ -59,11 +60,14 @@ type ServerStatus = 'checking' | 'online' | 'offline'
 // ─── Static agent fallback ─────────────────────────────────────────────────────
 
 const STATIC_AGENTS: AgentMeta[] = [
-  { id: 'echo',             name: 'Echo Agent',         description: 'Repeats back what you say.' },
-  { id: 'calculator',       name: 'Calculator Agent',   description: 'Solves math using a calculator tool.' },
-  { id: 'optima-inspector', name: 'Optima Inspector',   description: 'Queries live traces, failures, and cost data.' },
-  { id: 'research-bot',     name: 'Research Bot',       description: 'Uses mock web-search + summarizer.' },
-  { id: 'full-demo',        name: 'Full Demo Agent',    description: 'All tools enabled.' },
+  { id: 'echo-ms', name: 'Echo Agent', description: 'Repeats back what you say.', framework: 'ms_agent_framework' },
+  { id: 'calculator-ms', name: 'Calculator Agent', description: 'Solves math using a calculator tool.', framework: 'ms_agent_framework' },
+  { id: 'optima-inspector-ms', name: 'Optima Inspector', description: 'Queries live traces, failures, and cost data.', framework: 'ms_agent_framework' },
+  { id: 'research-bot-ms', name: 'Research Bot', description: 'Uses mock web-search + summarizer.', framework: 'ms_agent_framework' },
+  { id: 'echo-langgraph', name: 'Echo Agent', description: 'Repeats back what you say.', framework: 'langgraph' },
+  { id: 'calculator-langgraph', name: 'Calculator Agent', description: 'Solves math using a calculator tool.', framework: 'langgraph' },
+  { id: 'optima-inspector-langgraph', name: 'Optima Inspector', description: 'Queries live traces, failures, and cost data.', framework: 'langgraph' },
+  { id: 'research-bot-langgraph', name: 'Research Bot', description: 'Uses mock web-search + summarizer.', framework: 'langgraph' },
 ]
 
 // ─── Config panel ──────────────────────────────────────────────────────────────
@@ -168,7 +172,7 @@ function ConfigPanel({ config, onChange }: { config: SandboxConfig; onChange: (c
               </div>
             </div>
             <p className="text-[11px] text-slate-500 mt-2">
-              Start: <code className="text-slate-400">cd sandbox/python && uvicorn server:app --port 8765 --reload</code>
+              Start: <code className="text-slate-400">cd sandbox/python && uvicorn agentic_server:app --port 8765 --reload</code>
             </p>
             <p className="text-[11px] text-slate-500 mt-1">
               Telemetry requires JWT from the main dashboard token field.
@@ -306,7 +310,7 @@ export default function SandboxPage() {
       {/* Offline banner */}
       {serverStatus === 'offline' && (
         <div className="px-4 py-2.5 rounded-lg border border-amber-500/20 bg-amber-500/5 text-amber-400 text-xs font-mono">
-          Start the sandbox server: <strong>cd sandbox/python && uvicorn server:app --port 8765 --reload</strong>
+          Start the sandbox server: <strong>cd sandbox/python && uvicorn agentic_server:app --port 8765 --reload</strong>
         </div>
       )}
 
@@ -314,13 +318,14 @@ export default function SandboxPage() {
         {/* Sidebar */}
         <div className="w-64 shrink-0 flex flex-col gap-4">
           <div className="rounded-lg border p-4 flex flex-col gap-2" style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-surface)' }}>
-            <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">
-              Agent <span className="text-slate-600 normal-case font-normal">(MS Agent Framework)</span>
-            </p>
+            <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">Agent</p>
             {agents.map(agent => (
               <button key={agent.id} onClick={() => handleAgentChange(agent.id)}
                 className={`text-left px-3 py-2.5 rounded-md border transition-colors ${selectedAgentId === agent.id ? 'border-indigo-500 bg-indigo-500/10 text-white' : 'border-transparent text-slate-400 hover:text-slate-200 hover:bg-white/5'}`}>
-                <p className="text-sm font-medium">{agent.name}</p>
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-sm font-medium">{agent.name}</p>
+                  <span className="text-[10px] uppercase tracking-wide text-slate-500">{agent.framework === 'langgraph' ? 'LangGraph' : 'MS AF'}</span>
+                </div>
                 <p className="text-xs text-slate-500 mt-0.5 leading-snug">{agent.description}</p>
               </button>
             ))}
@@ -335,7 +340,7 @@ export default function SandboxPage() {
               <div className="flex-1 flex items-center justify-center text-slate-500 text-sm">
                 {serverStatus === 'offline' ? 'Start the sandbox server to chat.' :
                  !configValid ? 'Configure your LLM API key on the left.' :
-                 `Chat with ${selectedAgent?.name ?? 'agent'} — powered by MS Agent Framework`}
+                 `Chat with ${selectedAgent?.name ?? 'agent'} — powered by ${selectedAgent?.framework === 'langgraph' ? 'LangGraph' : 'MS Agent Framework'}`}
               </div>
             )}
             {displayMessages.map((msg, i) => (

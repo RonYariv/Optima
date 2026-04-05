@@ -101,6 +101,18 @@ async function fetchTraceWithSteps(
   return { ...trace, steps: enrichedSteps };
 }
 
+async function getTraceProject(
+  db: DbClient,
+  traceId: string,
+): Promise<{ id: string; projectId: string } | null> {
+  const [trace] = await db
+    .select({ id: traces.id, projectId: traces.projectId })
+    .from(traces)
+    .where(eq(traces.id, traceId))
+    .limit(1);
+  return trace ?? null;
+}
+
 export function buildTraceRoutes(db: DbClient) {
   return async function traceRoutes(app: FastifyInstance): Promise<void> {
 
@@ -155,6 +167,12 @@ export function buildTraceRoutes(db: DbClient) {
       const p = TraceIdParamSchema.safeParse(request.params);
       if (!p.success) return reply.code(400).send({ error: 'InvalidParam' });
       const { traceId } = p.data;
+
+      const traceMeta = await getTraceProject(db, traceId);
+      if (!traceMeta) return reply.code(404).send({ error: 'NotFound' });
+      const allowed = scopedProjectIds(request, traceMeta.projectId);
+      if (!allowed) return reply.code(403).send({ error: 'Forbidden' });
+
       const raw = await fetchTraceWithSteps(db, traceId);
       if (!raw) return reply.code(404).send({ error: 'NotFound' });
       const events = await db
@@ -181,14 +199,10 @@ export function buildTraceRoutes(db: DbClient) {
       if (!p.success) return reply.code(400).send({ error: 'InvalidParam' });
       const { traceId } = p.data;
 
-      // Verify the trace exists before returning events
-      const [trace] = await db
-        .select({ id: traces.id })
-        .from(traces)
-        .where(eq(traces.id, traceId))
-        .limit(1);
-
-      if (!trace) return reply.code(404).send({ error: 'NotFound' });
+      const traceMeta = await getTraceProject(db, traceId);
+      if (!traceMeta) return reply.code(404).send({ error: 'NotFound' });
+      const allowed = scopedProjectIds(request, traceMeta.projectId);
+      if (!allowed) return reply.code(403).send({ error: 'Forbidden' });
 
       const events: AuditEvent[] = await db
         .select()

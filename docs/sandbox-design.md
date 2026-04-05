@@ -88,8 +88,8 @@ sandbox/
 │       └── multi-agent-handoff.ts   (Node.js version)
 │
 └── python/
-    ├── requirements.txt    optima-sdk (local path install)
-    ├── run.py              python sandbox/python/run.py [scenario]
+  ├── requirements.txt    framework/runtime deps only (no SDK)
+  ├── run.py              deprecated helper (use uvicorn agentic_server:app)
     ├── mock_tools.py       Pure-function mock tools
     ├── scenarios/
     │   ├── agentic_style.py     Multi-agent handoff (agentic-framework patterns)
@@ -116,7 +116,6 @@ sandbox/
     "all": "tsx src/index.ts --all"
   },
   "dependencies": {
-    "@agent-optima/sdk-node": "*",
     "express": "^4.18.2"
   },
   "devDependencies": {
@@ -149,7 +148,7 @@ PROJECT_ID=demo
 
 ### Step 2 — `src/lib/client.ts`
 
-Wraps `OptimaClient` from `@agent-optima/sdk-node` and adds:
+Wraps direct HTTP ingest calls and adds:
 
 - `sequenceNo` counter per `traceId` (auto-increment)
 - `occurredAt` stamping (ISO string from `Date.now()`)
@@ -157,7 +156,7 @@ Wraps `OptimaClient` from `@agent-optima/sdk-node` and adds:
   `POST /v1/ingest/audit-event`
 
 ```ts
-import { OptimaClient } from '@agent-optima/sdk-node';
+// direct HTTP transport (fetch/httpx) — no SDK dependency
 
 // Sequence counter map — keyed by traceId
 const seqMap = new Map<string, number>();
@@ -187,9 +186,8 @@ export function createSandboxTracer(client: OptimaClient, tenantId: string, proj
 }
 ```
 
-**Note:** `OptimaClient.ingest.auditEvent` needs to be added to `sdk-node`
-(it currently only has `modelCall` and `toolCall`). Add it in the same session
-that implements the sandbox.
+**Note:** Sandbox telemetry now uses direct HTTP bridge calls (`/v1/ingest/*`).
+No SDK extension is required for sandbox scenarios.
 
 ---
 
@@ -397,7 +395,6 @@ orchestrator → agent_end
 **`src/index.ts`**
 
 ```ts
-import { OptimaClient } from '@agent-optima/sdk-node';
 import { startMockMcpServers } from './mock-mcp/index.js';
 import { runResearchBot } from './scenarios/research-bot.js';
 import { runCodingAssistant } from './scenarios/coding-assistant.js';
@@ -408,7 +405,7 @@ const OPTIMA_TOKEN = process.env.OPTIMA_TOKEN ?? '';
 const TENANT_ID    = process.env.TENANT_ID    ?? 'sandbox';
 const PROJECT_ID   = process.env.PROJECT_ID   ?? 'demo';
 
-const client = new OptimaClient({ url: OPTIMA_URL, token: OPTIMA_TOKEN, silent: false });
+const client = { baseUrl: OPTIMA_URL, token: OPTIMA_TOKEN };
 
 const scenario = process.argv[2] ?? 'all';
 
@@ -483,27 +480,14 @@ would.
 Run with:
 ```bash
 cd sandbox/python
-pip install -e ../../packages/sdk-python
-python run.py            # all
-python run.py agentic    # single
+python run.py
 ```
 
 ---
 
-### Step 10 — SDK update required
+### Step 10 — Direct HTTP bridge
 
-`@agent-optima/sdk-node` needs `ingest.auditEvent(payload)` added (mirrors
-`ingest.toolCall`). Similarly the Python SDK needs `ingest.audit_event(...)`.
-
-The Node SDK already has the private `_post` helper so the addition is:
-
-```ts
-// sdk-node/src/index.ts  — inside readonly ingest = { ... }
-auditEvent: (payload: AuditEventPayload): Promise<void> =>
-  this.post('/v1/ingest/audit-event', payload),
-```
-
-And a new `AuditEventPayload` interface matching `AuditEventIngestSchema`.
+Use `/v1/ingest/*` endpoints directly from framework adapters. No SDK package changes are required.
 
 ---
 

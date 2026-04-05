@@ -385,13 +385,13 @@ Post-MVP focus: production hardening, enterprise features, performance optimizat
 
 ### SECTION F: SDKs & API Completeness
 
-#### F1 — Python SDK Feature Parity
+#### F1 — Python Bridge Feature Parity
 **Status:** ⬜ Pending  
-**Description:** Full Python SDK with async support, retry logic, and type hints.
+**Description:** Full Python bridge/runtime layer with async support, retry logic, and type hints.
 
 **Detail:**
-- [ ] Extend `packages/sdk-python`:
-  - All OptimaClient methods (sync + async)
+- [ ] Extend `sandbox/python` bridge runtime and adapters:
+  - All ingest paths (`/v1/ingest/model-call`, `/v1/ingest/tool-call`, `/v1/ingest/audit-event`)
   - Type hints for all parameters
   - Batch event support
   - Automatic retry on network errors
@@ -402,7 +402,7 @@ Post-MVP focus: production hardening, enterprise features, performance optimizat
 - [ ] Documentation: "Python SDK Guide"
 
 **Acceptance Criteria:**
-- Python SDK matches Node.js SDK feature-for-feature
+- Python bridge/runtime matches Node.js bridge capabilities feature-for-feature
 - Type hints pass mypy strict mode
 - PyPI package <1KB/month downloads
 

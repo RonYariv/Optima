@@ -8,7 +8,6 @@
     "all": "tsx src/index.ts all"
   },
   "dependencies": {
-    "@agent-optima/sdk-node": "*",
     "dotenv": "^16.4.5",
     "express": "^4.18.2"
   },

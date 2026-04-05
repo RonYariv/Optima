@@ -3,7 +3,7 @@ FROM node:20-alpine AS builder
 WORKDIR /app
 
 # Copy all workspace manifests (npm ci needs the full workspace graph)
-COPY package.json package-lock.json ./
+COPY package.json package-lock.json tsconfig.base.json ./
 COPY apps/api-gateway/package.json             ./apps/api-gateway/
 COPY apps/control-api/package.json             ./apps/control-api/
 COPY apps/web/package.json                     ./apps/web/
@@ -11,7 +11,6 @@ COPY packages/db/package.json                  ./packages/db/
 COPY packages/agentic/package.json             ./packages/agentic/
 COPY packages/queue/package.json               ./packages/queue/
 COPY packages/schemas/package.json             ./packages/schemas/
-COPY packages/sdk-node/package.json                 ./packages/sdk-node/
 COPY services/analytics-workers/package.json   ./services/analytics-workers/
 
 RUN npm ci

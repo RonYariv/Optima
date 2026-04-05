@@ -36,7 +36,6 @@ export const auditEvents = pgTable(
   (t) => [
     index('audit_events_trace_id_idx').on(t.traceId),
     index('audit_events_trace_seq_idx').on(t.traceId, t.sequenceNo),
-    index('audit_events_step_id_idx').on(t.stepId),
   ],
 );
 

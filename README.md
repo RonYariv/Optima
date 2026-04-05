@@ -51,7 +51,7 @@ EOF
 
 Paste this token in the dashboard on first load, and set it as `OPTIMA_TOKEN` in your agent.
 
-## SDK — Node.js
+## Direct HTTP Ingest — Node.js
 
 ```bash
 # local (monorepo)
@@ -59,66 +59,70 @@ npm install
 ```
 
 ```ts
-import { OptimaClient } from '@agent-optima/sdk-node';
-
-const optima = new OptimaClient({
-  url: process.env.OPTIMA_URL,      // http://optima-gateway:3000
-  token: process.env.OPTIMA_TOKEN,   // Bearer token with projects scope
-});
+const OPTIMA_URL = process.env.OPTIMA_URL;       // http://optima-gateway:3000
+const OPTIMA_TOKEN = process.env.OPTIMA_TOKEN;   // Bearer token with projects scope
 
 const t0 = Date.now();
 const res = await openai.chat.completions.create({ model: 'gpt-4o', messages });
 
-await optima.ingest.modelCall({
-  projectId: 'sales-agent',  // must match token scope
-  traceId: ctx.traceId,
-  stepId: crypto.randomUUID(),
-  agentId: 'sales-agent-v2',
-  stepIndex: 0,
-  modelProvider: 'openai',
-  modelName: 'gpt-4o',
-  inputTokens: res.usage.prompt_tokens,
-  outputTokens: res.usage.completion_tokens,
-  latencyMs: Date.now() - t0,
-  requestAt: new Date(t0).toISOString(),
-  responseAt: new Date().toISOString(),
+await fetch(`${OPTIMA_URL}/v1/ingest/model-call`, {
+  method: 'POST',
+  headers: {
+    'Authorization': `Bearer ${OPTIMA_TOKEN}`,
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
+    projectId: 'sales-agent',  // must match token scope
+    traceId: ctx.traceId,
+    stepId: crypto.randomUUID(),
+    stepIndex: 0,
+    agentId: 'sales-agent-v2',
+    modelProvider: 'openai',
+    modelName: 'gpt-4o',
+    inputTokens: res.usage.prompt_tokens,
+    outputTokens: res.usage.completion_tokens,
+    latencyMs: Date.now() - t0,
+    requestAt: new Date(t0).toISOString(),
+    responseAt: new Date().toISOString(),
+  }),
 });
 ```
 
-## SDK — Python
+## Direct HTTP Ingest — Python
 
 ```bash
-pip install optima-sdk   # once published; or: pip install ./packages/sdk-python
+pip install httpx
 ```
 
 ```python
-from optima_sdk import OptimaClient
 import os, time, uuid
 from datetime import datetime, timezone
+import httpx
 
-optima = OptimaClient(url=os.environ["OPTIMA_URL"], token=os.environ["OPTIMA_TOKEN"])
+optima_url = os.environ["OPTIMA_URL"]
+optima_token = os.environ["OPTIMA_TOKEN"]
 
 t0 = time.time()
 response = openai_client.chat.completions.create(model="gpt-4o", messages=messages)
 
-optima.ingest.model_call(
-    tenant_id="my-project",   project_id="sales-agent",
-    trace_id=ctx.trace_id,    step_id=str(uuid.uuid4()),
-    agent_id="sales-agent-v2",
-    model_provider="openai",  model_name="gpt-4o",
-    input_tokens=response.usage.prompt_tokens,
-    output_tokens=response.usage.completion_tokens,
-    latency_ms=int((time.time() - t0) * 1000),
-    request_at=datetime.fromtimestamp(t0, tz=timezone.utc).isoformat(),
-    response_at=datetime.now(tz=timezone.utc).isoformat(),
+httpx.post(
+  f"{optima_url}/v1/ingest/model-call",
+  headers={"Authorization": f"Bearer {optima_token}"},
+  json={
+    "projectId": "sales-agent",
+    "traceId": ctx.trace_id,
+    "stepId": str(uuid.uuid4()),
+    "stepIndex": 0,
+    "agentId": "sales-agent-v2",
+    "modelProvider": "openai",
+    "modelName": "gpt-4o",
+    "inputTokens": response.usage.prompt_tokens,
+    "outputTokens": response.usage.completion_tokens,
+    "latencyMs": int((time.time() - t0) * 1000),
+    "requestAt": datetime.fromtimestamp(t0, tz=timezone.utc).isoformat(),
+    "responseAt": datetime.now(tz=timezone.utc).isoformat(),
+  },
 )
-```
-
-Async version:
-```python
-from optima_sdk import AsyncOptimaClient
-optima = AsyncOptimaClient(url=..., token=...)
-await optima.ingest.model_call(...)
 ```
 
 ## Workspace Layout
@@ -133,8 +137,6 @@ packages/
   schemas/           Shared Zod contracts
   db/                Drizzle ORM + repositories + migrations
   queue/             PGMQ abstraction
-  sdk/               Node.js SDK
-  sdk-python/        Python SDK
 
 services/
   analytics-workers/ PGMQ consumers — cost calc, failure classification
