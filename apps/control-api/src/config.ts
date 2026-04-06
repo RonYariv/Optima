@@ -26,6 +26,9 @@ const ConfigSchema = z.object({
 
   RATE_LIMIT_MAX: z.coerce.number().int().positive().default(300),
   RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(60_000),
+
+  GATEWAY_METRICS_URL: z.string().url().default('http://localhost:3000/metrics'),
+  WORKER_METRICS_URL: z.string().url().default('http://localhost:9465/metrics'),
 });
 
 export type Config = z.infer<typeof ConfigSchema>;

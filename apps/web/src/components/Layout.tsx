@@ -16,6 +16,7 @@ export default function Layout() {
           Agent Optima
         </Link>
         <NavLink to="/traces" className={navLinkClass}>Traces</NavLink>
+        <NavLink to="/performance" className={navLinkClass}>Performance</NavLink>
         <NavLink to="/failures" className={navLinkClass}>Failures</NavLink>
         <NavLink to="/cost" className={navLinkClass}>Cost</NavLink>
         {isDev && (

@@ -13,6 +13,8 @@ const WorkerConfigSchema = z.object({
   POLL_INTERVAL_MS: z.coerce.number().int().positive().default(1_000),
   VISIBILITY_TIMEOUT_SECS: z.coerce.number().int().positive().default(30),
   MAX_RETRIES: z.coerce.number().int().positive().default(3),
+  METRICS_PORT: z.coerce.number().int().positive().default(9465),
+  METRICS_HOST: z.string().default('0.0.0.0'),
 });
 
 export type WorkerConfig = z.infer<typeof WorkerConfigSchema>;

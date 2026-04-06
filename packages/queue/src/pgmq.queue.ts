@@ -88,4 +88,12 @@ export class PgmqQueue<T> implements IQueue<T> {
     // Archive instead of delete — keeps a record in pgmq.a_<queue_name> for debugging
     await this.sql`SELECT pgmq.archive(${this.name}, ${msgId.toString()}::bigint)`;
   }
+
+  async depth(): Promise<number> {
+    const rows = await this.sql<{ queue_length: number }[]>`
+      SELECT COALESCE(queue_length, 0)::int AS queue_length
+      FROM pgmq.metrics(${this.name})
+    `;
+    return Number(rows[0]?.queue_length ?? 0);
+  }
 }

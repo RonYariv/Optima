@@ -4,10 +4,13 @@ import helmet from '@fastify/helmet';
 import rateLimit from '@fastify/rate-limit';
 import { config } from './config.js';
 import { authPlugin } from '@agent-optima/fastify-auth';
+import { metricsPlugin } from './plugins/metrics.js';
 import { healthRoutes } from './routes/health.js';
 import { buildTraceRoutes } from './routes/traces.js';
 import { buildFailureRoutes } from './routes/failures.js';
 import { buildCostRoutes } from './routes/cost.js';
+import { buildStatsRoutes } from './routes/stats.js';
+import { buildPerformanceRoutes } from './routes/performance.js';
 import { createDbClient } from '@agent-optima/db';
 
 export async function buildServer() {
@@ -46,6 +49,7 @@ export async function buildServer() {
     jwtIssuer: config.JWT_ISSUER,
     jwtAudience: config.JWT_AUDIENCE,
   });
+  await app.register(metricsPlugin);
 
   // DB client — scoped to this server
   const db = createDbClient(config.DATABASE_URL, config.DATABASE_SSL === 'disable');
@@ -55,6 +59,22 @@ export async function buildServer() {
   await app.register(buildTraceRoutes(db));
   await app.register(buildFailureRoutes(db));
   await app.register(buildCostRoutes(db));
+  await app.register(buildStatsRoutes(db));
+  await app.register(buildPerformanceRoutes(db));
+
+  app.setErrorHandler((error: Error & { statusCode?: number }, request, reply) => {
+    request.log.error(error);
+    const statusCode = error.statusCode ?? 500;
+    if (statusCode >= 500) app.metrics.recordFailure('provider');
+    reply.code(statusCode).send({
+      error: error.name ?? 'InternalServerError',
+      message:
+        statusCode >= 500 && config.NODE_ENV === 'production'
+          ? 'An unexpected error occurred'
+          : error.message,
+      requestId: request.id,
+    });
+  });
 
   return app;
 }

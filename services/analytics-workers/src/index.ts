@@ -16,6 +16,7 @@ import { ModelCallWorker } from './workers/model-call.worker.js';
 import { ToolCallWorker } from './workers/tool-call.worker.js';
 import { AuditEventWorker } from './workers/audit-event.worker.js';
 import { LiteLLMPricingService } from './pricing.js';
+import { startWorkerMetricsServer } from './plugins/metrics.js';
 
 const QUEUE_MODEL_CALL = 'model-call-ingest';
 const QUEUE_TOOL_CALL = 'tool-call-ingest';
@@ -52,6 +53,8 @@ async function main() {
   const toolCallQueue = new PgmqQueue<ToolCallIngest>(pgSql, QUEUE_TOOL_CALL);
   const auditEventQueue = new PgmqQueue<AuditEventIngest>(pgSql, QUEUE_AUDIT_EVENT);
 
+  const metrics = startWorkerMetricsServer(config.METRICS_HOST, config.METRICS_PORT);
+
   // Ensure queues exist (idempotent)
   await modelCallQueue.init();
   await toolCallQueue.init();
@@ -69,12 +72,31 @@ async function main() {
   process.on('SIGTERM', () => { console.log('SIGTERM received, shutting down...'); ac.abort(); });
   process.on('SIGINT',  () => { console.log('SIGINT received, shutting down...');  ac.abort(); });
 
+  const queueDepthInterval = setInterval(async () => {
+    try {
+      const [modelDepth, toolDepth, auditDepth] = await Promise.all([
+        ((modelCallQueue as { depth?: () => Promise<number> }).depth?.() ?? Promise.resolve(0)),
+        ((toolCallQueue as { depth?: () => Promise<number> }).depth?.() ?? Promise.resolve(0)),
+        ((auditEventQueue as { depth?: () => Promise<number> }).depth?.() ?? Promise.resolve(0)),
+      ]);
+      metrics.setQueueDepth('modelCall', modelDepth);
+      metrics.setQueueDepth('toolCall', toolDepth);
+      metrics.setQueueDepth('auditEvent', auditDepth);
+    } catch (err) {
+      console.warn('Failed to collect queue depth', err);
+    }
+  }, 5_000);
+  queueDepthInterval.unref();
+
   const workerOpts = {
     visibilityTimeoutSecs: config.VISIBILITY_TIMEOUT_SECS,
     pollIntervalMs: config.POLL_INTERVAL_MS,
     maxRetries: config.MAX_RETRIES,
     signal: ac.signal,
     onError: (err: unknown, payload: unknown) => {
+      const message = err instanceof Error ? err.message.toLowerCase() : '';
+      if (message.includes('timeout')) metrics.recordFailure('timeout');
+      else metrics.recordFailure('provider');
       console.error('Worker error', { err, payload });
     },
   };
@@ -85,20 +107,30 @@ async function main() {
     runWorker<ModelCallIngest>(
       modelCallQueue,
       async (payload) => {
+        const startedAt = Date.now();
         const raw = typeof payload === 'string' ? JSON.parse(payload) : payload;
         const parsed = ModelCallIngestSchema.safeParse(raw);
-        if (!parsed.success) throw new Error(`Invalid model-call payload: ${parsed.error.message}`);
+        if (!parsed.success) {
+          metrics.recordFailure('validation');
+          throw new Error(`Invalid model-call payload: ${parsed.error.message}`);
+        }
         await modelCallWorker.handle(parsed.data);
+        metrics.recordModelLatency(Date.now() - startedAt);
       },
       workerOpts,
     ),
     runWorker<ToolCallIngest>(
       toolCallQueue,
       async (payload) => {
+        const startedAt = Date.now();
         const raw = typeof payload === 'string' ? JSON.parse(payload) : payload;
         const parsed = ToolCallIngestSchema.safeParse(raw);
-        if (!parsed.success) throw new Error(`Invalid tool-call payload: ${parsed.error.message}`);
+        if (!parsed.success) {
+          metrics.recordFailure('validation');
+          throw new Error(`Invalid tool-call payload: ${parsed.error.message}`);
+        }
         await toolCallWorker.handle(parsed.data);
+        metrics.recordToolLatency(Date.now() - startedAt);
       },
       workerOpts,
     ),
@@ -107,13 +139,18 @@ async function main() {
       async (payload) => {
         const raw = typeof payload === 'string' ? JSON.parse(payload) : payload;
         const parsed = AuditEventIngestSchema.safeParse(raw);
-        if (!parsed.success) throw new Error(`Invalid audit-event payload: ${parsed.error.message}`);
+        if (!parsed.success) {
+          metrics.recordFailure('validation');
+          throw new Error(`Invalid audit-event payload: ${parsed.error.message}`);
+        }
         await auditEventWorker.handle(parsed.data);
       },
       workerOpts,
     ),
   ]);
 
+  clearInterval(queueDepthInterval);
+  await metrics.close();
   await pgSql.end();
   console.log('Workers shut down cleanly.');
 }

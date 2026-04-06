@@ -56,7 +56,12 @@ export function buildIngestRoutes() {
       '/v1/ingest/model-call',
       async (request, reply) => {
         const data = parseBody(ModelCallIngestSchema, request.body, reply);
-        if (!data) return;
+        if (!data) {
+          request.server.metrics.recordFailure('validation');
+          return;
+        }
+
+        request.server.metrics.recordModelLatency(data.latencyMs);
 
         // Fire-and-forget enqueue — never block the response
         try {
@@ -67,6 +72,7 @@ export function buildIngestRoutes() {
           }
         } catch (err: unknown) {
           request.log.error({ err, traceId: data.traceId }, 'Failed to enqueue model-call');
+          request.server.metrics.recordFailure('provider');
           return reply.code(503).send({
             error: 'QueueUnavailable',
             message: 'Telemetry ingest is temporarily unavailable',
@@ -86,7 +92,12 @@ export function buildIngestRoutes() {
       '/v1/ingest/tool-call',
       async (request, reply) => {
         const data = parseBody(ToolCallIngestSchema, request.body, reply);
-        if (!data) return;
+        if (!data) {
+          request.server.metrics.recordFailure('validation');
+          return;
+        }
+
+        request.server.metrics.recordToolLatency(data.latencyMs);
 
         try {
           if (app.queues) {
@@ -96,6 +107,7 @@ export function buildIngestRoutes() {
           }
         } catch (err: unknown) {
           request.log.error({ err, traceId: data.traceId }, 'Failed to enqueue tool-call');
+          request.server.metrics.recordFailure('provider');
           return reply.code(503).send({
             error: 'QueueUnavailable',
             message: 'Telemetry ingest is temporarily unavailable',
@@ -115,7 +127,10 @@ export function buildIngestRoutes() {
       '/v1/ingest/audit-event',
       async (request, reply) => {
         const data = parseBody(AuditEventIngestSchema, request.body, reply);
-        if (!data) return;
+        if (!data) {
+          request.server.metrics.recordFailure('validation');
+          return;
+        }
 
         try {
           if (app.queues) {
@@ -125,6 +140,7 @@ export function buildIngestRoutes() {
           }
         } catch (err: unknown) {
           request.log.error({ err, traceId: data.traceId }, 'Failed to enqueue audit-event');
+          request.server.metrics.recordFailure('provider');
           return reply.code(503).send({
             error: 'QueueUnavailable',
             message: 'Telemetry ingest is temporarily unavailable',

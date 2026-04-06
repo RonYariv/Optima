@@ -29,6 +29,14 @@ Services come up at:
 | API gateway (ingest) | http://localhost:3000 |
 | Control API (dashboard backend) | http://localhost:3001 |
 
+Metrics endpoints:
+- API gateway: `http://localhost:3000/metrics`
+- Control API: `http://localhost:3001/metrics`
+- Analytics workers: `http://localhost:9465/metrics`
+
+Stats API for dashboard/CLI:
+- `GET http://localhost:3001/v1/stats?window=1h|24h|7d`
+
 ## Generate an API Token
 
 ```bash
@@ -150,6 +158,7 @@ npm run build        # build all packages and apps
 ```
 
 See [agent-optima-design.md](agent-optima-design.md) for full architecture documentation.
+See [docs/performance-tuning-guide.md](docs/performance-tuning-guide.md) for latency/queue tuning.
 
 
 This commit bootstraps repository standards and shared event schemas.

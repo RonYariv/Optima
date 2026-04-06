@@ -55,21 +55,21 @@ Post-MVP focus: production hardening, enterprise features, performance optimizat
 ---
 
 #### A2 — Performance Instrumentation & Metrics
-**Status:** ⬜ Pending  
+**Status:** ✅ Completed  
 **Description:** Real-time performance visibility: latency per operation, throughput, queue health.
 
 **Detail:**
-- [ ] Add pino metrics plugin to all services (`src/plugins/metrics.ts`)
+- [x] Add pino metrics plugin to all services (`src/plugins/metrics.ts`)
   - Histogram: `tool.call.latency_ms` (p50, p95, p99)
   - Histogram: `model.call.latency_ms` (p50, p95, p99)
   - Gauge: `queue.depth` (messages pending)
   - Counter: `ingest.requests_total` (by endpoint, status)
   - Counter: `failures_total` (by category: timeout, auth, validation, provider)
-- [ ] Expose Prometheus metrics at `GET /metrics`
-- [ ] Dashboard widget: "Tail Latencies" (real-time p95/p99)
-- [ ] Dashboard widget: "Queue Health" (depth, drain_time)
-- [ ] CLI command: `optima stats` (last 1h, 24h, 7d aggregates)
-- [ ] Document: "Performance Tuning Guide"
+- [x] Expose Prometheus metrics at `GET /metrics`
+- [x] Dashboard widget: "Tail Latencies" (real-time p95/p99)
+- [x] Dashboard widget: "Queue Health" (depth, drain_time)
+- [x] CLI command: `optima stats` (last 1h, 24h, 7d aggregates)
+- [x] Document: "Performance Tuning Guide"
 
 **Acceptance Criteria:**
 - Metrics queryable via Prometheus scrape endpoint

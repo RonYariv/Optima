@@ -39,4 +39,10 @@ export interface IQueue<T> {
    * For PGMQ this archives the message rather than deleting it.
    */
   nack(msgId: bigint): Promise<void>;
+
+  /**
+   * Approximate visible messages pending in the queue.
+   * Optional because not all transports expose queue depth.
+   */
+  depth?(): Promise<number>;
 }

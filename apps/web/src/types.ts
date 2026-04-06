@@ -66,6 +66,74 @@ export interface CostSummaryResponse {
   breakdown: CostBreakdownItem[]
 }
 
+export type StatsWindow = '1h' | '24h' | '7d'
+
+export interface PerformanceRow {
+  name: string
+  callCount: number
+  p50Ms: number
+  p95Ms: number
+  p99Ms: number
+  avgMs: number
+}
+
+export interface ModelPerformanceRow extends PerformanceRow {
+  totalTokens: number
+}
+
+export interface ToolPerformanceRow extends PerformanceRow {
+  successRate: number
+}
+
+export interface McpPerformanceRow extends PerformanceRow {
+  successRate: number
+  errorCount: number
+}
+
+export interface PerformanceSummaryResponse {
+  view: 'models' | 'tools' | 'mcps'
+  paging: {
+    limit: number
+    offset: number
+    hasMore: boolean
+  }
+  window: StatsWindow
+  from: string
+  to: string
+  selectedMcp: string | null
+  availableMcps: string[]
+  models: ModelPerformanceRow[]
+  tools: ToolPerformanceRow[]
+  mcps: McpPerformanceRow[]
+}
+
+export interface StatsSummaryResponse {
+  window: StatsWindow
+  modelCall: {
+    count: number
+    p50Ms: number
+    p95Ms: number
+    p99Ms: number
+  }
+  toolCall: {
+    count: number
+    p50Ms: number
+    p95Ms: number
+    p99Ms: number
+  }
+  queue: {
+    depth: number
+    eventsPerSecond: number
+    drainTimeSec: number | null
+  }
+  failures: {
+    timeout: number
+    auth: number
+    validation: number
+    provider: number
+  }
+}
+
 export interface PaginatedResponse<T> {
   data: T[]
   nextCursor?: string

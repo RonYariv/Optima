@@ -5,6 +5,7 @@ import { config } from './config.js';
 import { requestIdPlugin } from './plugins/request-id.js';
 import { authPlugin } from '@agent-optima/fastify-auth';
 import { queuePlugin } from './plugins/queue.js';
+import { metricsPlugin } from './plugins/metrics.js';
 import { healthRoutes } from './routes/health.js';
 import { buildIngestRoutes } from './routes/ingest.js';
 
@@ -48,6 +49,7 @@ export async function createServer() {
     jwtIssuer: config.JWT_ISSUER,
     jwtAudience: config.JWT_AUDIENCE,
   });
+  await app.register(metricsPlugin);
   await app.register(queuePlugin);
 
   // ── Routes ────────────────────────────────────────────────────────────────
@@ -58,6 +60,9 @@ export async function createServer() {
   app.setErrorHandler((error: Error & { statusCode?: number }, request, reply) => {
     request.log.error(error);
     const statusCode = error.statusCode ?? 500;
+    if (statusCode >= 500) {
+      app.metrics.recordFailure('provider');
+    }
     reply.code(statusCode).send({
       error: error.name ?? 'InternalServerError',
       message:

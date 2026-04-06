@@ -4,6 +4,9 @@ import type {
   TraceDetail,
   Failure,
   CostSummaryResponse,
+  StatsSummaryResponse,
+  PerformanceSummaryResponse,
+  StatsWindow,
   TraceStatus,
   FailureSeverity,
   CostGroupBy,
@@ -53,6 +56,17 @@ export interface CostSummaryParams {
   to?: string
 }
 
+export interface PerformanceParams {
+  view?: 'models' | 'tools' | 'mcps'
+  window?: StatsWindow
+  mcpName?: string
+  q?: string
+  limit?: number
+  offset?: number
+  direction?: 'asc' | 'desc'
+  sortBy?: 'name' | 'callCount' | 'avgMs' | 'p95Ms' | 'p99Ms' | 'successRate' | 'errorCount' | 'totalTokens'
+}
+
 function buildQuery(params: Record<string, string | undefined>): string {
   const q = new URLSearchParams()
   for (const [k, v] of Object.entries(params)) {
@@ -82,5 +96,24 @@ export const api = {
   cost: {
     summary: (params?: CostSummaryParams) =>
       request<CostSummaryResponse>(`/v1/cost/summary${buildQuery({ ...params })}`),
+  },
+
+  stats: {
+    summary: (window: StatsWindow = '1h') =>
+      request<StatsSummaryResponse>(`/v1/stats${buildQuery({ window })}`),
+  },
+
+  performance: {
+    summary: (params?: PerformanceParams) =>
+      request<PerformanceSummaryResponse>(`/v1/performance${buildQuery({
+        view: params?.view,
+        window: params?.window,
+        mcpName: params?.mcpName,
+        q: params?.q,
+        limit: params?.limit != null ? String(params.limit) : undefined,
+        offset: params?.offset != null ? String(params.offset) : undefined,
+        direction: params?.direction,
+        sortBy: params?.sortBy,
+      })}`),
   },
 }

@@ -5,7 +5,8 @@
   "type": "module",
   "description": "optima-ctl — Agent-Optima management CLI",
   "bin": {
-    "optima-ctl": "./dist/index.js"
+    "optima-ctl": "./dist/index.js",
+    "optima": "./dist/index.js"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
