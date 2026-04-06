@@ -63,7 +63,7 @@ async function main() {
   console.log(`Queues ready: ${QUEUE_MODEL_CALL}, ${QUEUE_TOOL_CALL}, ${QUEUE_AUDIT_EVENT}`);
 
   // ── Workers ───────────────────────────────────────────────────────────────
-  const modelCallWorker = new ModelCallWorker(traceRepo, modelCallRepo, pricing);
+  const modelCallWorker = new ModelCallWorker(traceRepo, modelCallRepo, failureRepo, pricing);
   const toolCallWorker = new ToolCallWorker(traceRepo, toolCallRepo, failureRepo);
   const auditEventWorker = new AuditEventWorker(auditEventRepo, traceRepo);
 

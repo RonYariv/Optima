@@ -604,6 +604,7 @@ def _make_tools(optima_cfg: OptimaConfig) -> dict[str, Any]:
     def calculator(
         expression: Annotated[str, Field(description="Math expression to evaluate, e.g. '(10 * 3) / 2'")],
     ) -> str:
+        """Evaluate a simple arithmetic expression and return the numeric result."""
         try:
             result = _safe_eval(expression)
             return f"{expression} = {result}"
@@ -613,6 +614,7 @@ def _make_tools(optima_cfg: OptimaConfig) -> dict[str, Any]:
     def summarizer(
         text: Annotated[str, Field(description="The text to summarize")],
     ) -> str:
+        """Summarize an input text into a short human-readable summary."""
         trimmed = text[:200].rstrip()
         suffix = "..." if len(text) > 200 else ""
         return f"Summary: {trimmed}{suffix}"
@@ -620,6 +622,7 @@ def _make_tools(optima_cfg: OptimaConfig) -> dict[str, Any]:
     async def get_traces(
         limit: Annotated[int, Field(description="Max number of traces to return (1-50)", ge=1, le=50)] = 10,
     ) -> str:
+        """Fetch recent traces from the Optima control API for the active project."""
         url = f"{CONTROL_API_URL}/v1/traces?limit={limit}"
         headers = {"Authorization": f"Bearer {optima_cfg.token}"} if optima_cfg.token else {}
         try:
@@ -640,6 +643,7 @@ def _make_tools(optima_cfg: OptimaConfig) -> dict[str, Any]:
     async def get_failures(
         limit: Annotated[int, Field(description="Max number of failure events to return (1-50)", ge=1, le=50)] = 10,
     ) -> str:
+        """Fetch recent failure events from the Optima control API for the active project."""
         url = f"{CONTROL_API_URL}/v1/failures?limit={limit}"
         headers = {"Authorization": f"Bearer {optima_cfg.token}"} if optima_cfg.token else {}
         try:
@@ -658,6 +662,7 @@ def _make_tools(optima_cfg: OptimaConfig) -> dict[str, Any]:
             return f"Could not reach Optima control API: {exc}"
 
     async def get_cost_summary() -> str:
+        """Fetch aggregated model cost data from the Optima control API."""
         url = f"{CONTROL_API_URL}/v1/cost/summary"
         headers = {"Authorization": f"Bearer {optima_cfg.token}"} if optima_cfg.token else {}
         try:
@@ -678,6 +683,7 @@ def _make_tools(optima_cfg: OptimaConfig) -> dict[str, Any]:
     async def web_search(
         query: Annotated[str, Field(description="The search query")],
     ) -> str:
+        """Call the mock web-search MCP server and return its text result."""
         try:
             payload = {
                 "jsonrpc": "2.0",
@@ -685,7 +691,7 @@ def _make_tools(optima_cfg: OptimaConfig) -> dict[str, Any]:
                 "method": "tools/call",
                 "params": {"name": "search", "arguments": {"query": query}},
             }
-            response = await HTTP_CLIENT.post("http://localhost:4011", json=payload)
+            response = await HTTP_CLIENT.post("http://localhost:4011/mcp", json=payload)
             response.raise_for_status()
             result = response.json()
             content = result.get("result", {}).get("content", [])
@@ -697,6 +703,7 @@ def _make_tools(optima_cfg: OptimaConfig) -> dict[str, Any]:
     async def list_dir(
         path: Annotated[str, Field(description="Directory path to list")],
     ) -> str:
+        """Call the mock filesystem MCP server to list a directory path."""
         try:
             payload = {
                 "jsonrpc": "2.0",
@@ -704,7 +711,7 @@ def _make_tools(optima_cfg: OptimaConfig) -> dict[str, Any]:
                 "method": "tools/call",
                 "params": {"name": "list_dir", "arguments": {"path": path}},
             }
-            response = await HTTP_CLIENT.post("http://localhost:4010", json=payload)
+            response = await HTTP_CLIENT.post("http://localhost:4010/mcp", json=payload)
             response.raise_for_status()
             result = response.json()
             content = result.get("result", {}).get("content", [])

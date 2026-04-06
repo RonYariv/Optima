@@ -35,6 +35,7 @@ class LangGraphAdapter:
             ) from exc
 
         provider = self._detect_provider(llm_config.base_url, llm_config.model)
+        extract_token_usage = self._extract_token_usage
 
         class LangGraphTelemetryHandler(AsyncCallbackHandler):
             def __init__(self) -> None:
@@ -48,7 +49,7 @@ class LangGraphAdapter:
             async def on_llm_end(self, response: Any, *, run_id: Any, **kwargs: Any) -> None:
                 started = self._llm_start.pop(str(run_id), None)
                 elapsed_ms = int((time.perf_counter() - started) * 1000) if started else 0
-                input_tokens, output_tokens = self._extract_token_usage(response)
+                input_tokens, output_tokens = extract_token_usage(response)
                 await bridge.model_call(
                     model_name=llm_config.model,
                     input_tokens=input_tokens,

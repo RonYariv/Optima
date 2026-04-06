@@ -1,6 +1,7 @@
 import type { ModelCallIngest } from '@agent-optima/schemas';
-import type { TraceRepository, ModelCallRepository } from '@agent-optima/db';
+import type { TraceRepository, ModelCallRepository, FailureEventRepository } from '@agent-optima/db';
 import type { IPricingService } from '../pricing.js';
+import { classifyRootCause } from '../root-cause-classifier.js';
 
 /**
  * Handles a model-call ingest job:
@@ -15,6 +16,7 @@ export class ModelCallWorker {
   constructor(
     private readonly traceRepo: TraceRepository,
     private readonly modelCallRepo: ModelCallRepository,
+    private readonly failureRepo: FailureEventRepository,
     private readonly pricing: IPricingService,
   ) {}
 
@@ -75,6 +77,44 @@ export class ModelCallWorker {
         costUsd.toFixed(8),
         data.inputTokens + data.outputTokens,
       );
+
+      const metadataError =
+        data.metadata && typeof data.metadata === 'object'
+          ? (data.metadata['error'] as Record<string, unknown> | undefined)
+          : undefined;
+      const errorType =
+        metadataError && typeof metadataError['type'] === 'string'
+          ? metadataError['type']
+          : null;
+      const errorMessage =
+        metadataError && typeof metadataError['message'] === 'string'
+          ? metadataError['message']
+          : null;
+
+      // Model call failures are captured in metadata.error by the ingest bridge.
+      if (errorType || errorMessage) {
+        const rootCause = classifyRootCause(errorType, data.modelName);
+        await this.failureRepo.insert({
+          id: `${data.stepId}:failure:model`,
+          traceId: data.traceId,
+          stepId: data.stepId,
+          severity: 'high',
+          category: 'provider_error',
+          reason:
+            errorMessage ??
+            `Model "${data.modelName}" failed${errorType ? `: ${errorType}` : ''}`,
+          evidence: {
+            modelProvider: data.modelProvider,
+            modelName: data.modelName,
+            errorType,
+            errorMessage,
+            metadata: data.metadata,
+          },
+          rootCause,
+          occurredAt: new Date(data.responseAt),
+          createdAt: now,
+        });
+      }
     }
   }
 }
